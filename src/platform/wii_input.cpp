@@ -3,15 +3,13 @@
 #include <wiiuse/wpad.h>
 
 static PointerState lastPtr = {};
-static bool lastPtrValid = false;
 
 static void emitPointer(std::vector<InputEvent>& ev, const PointerState& p)
 {
-    if (p.valid == lastPtrValid && p.x == lastPtr.x && p.y == lastPtr.y) return;
+    if (p.valid == lastPtr.valid && p.x == lastPtr.x && p.y == lastPtr.y) return;
 
     ev.push_back({.type = InputEvent::Type::PointerMove, .pointer = p});
     lastPtr = p;
-    lastPtrValid = p.valid;
 }
 
 static void emitCommand(std::vector<InputEvent>& ev, const Command c)

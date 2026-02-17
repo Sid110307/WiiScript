@@ -9,7 +9,7 @@ add_executable(${TARGET} ${SOURCES})
 add_subdirectory(external/lua)
 target_link_libraries(${TARGET} grrlib freetype brotlidec brotlicommon bz2 fat jpeg pngu png z asnd mad wiiuse bte ogc
     m lua)
-targeT_include_directories(${TARGET} PRIVATE external/lua/src)
+target_include_directories(${TARGET} PRIVATE external/lua/src)
 
 set_target_properties(${TARGET} PROPERTIES
     OUTPUT_NAME boot

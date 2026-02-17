@@ -4,9 +4,6 @@
     <coder>Sid110307</coder>
     <version>1.0</version>
     <release_date>20260217000000</release_date>
-    <short_description>A scripting environment for the Wii</short_description>
-    <long_description>
-        A scripting environment for the Nintendo Wii. Write, run, and save scripts directly on your console with a
-        built-in editor, runtime, and SD card support.
-    </long_description>
+    <short_description>A scripting environment</short_description>
+    <long_description>A scripting environment for the Nintendo Wii. Write, run, and save scripts directly on your console with a built-in editor, runtime, and SD card support.</long_description>
 </app>
