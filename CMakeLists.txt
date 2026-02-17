@@ -6,7 +6,9 @@ file(GLOB_RECURSE SOURCES src/*.c src/*.cpp)
 file(GLOB_RECURSE BINFILES data/*.*)
 
 add_executable(${TARGET} ${SOURCES})
-target_link_libraries(${TARGET} wiiuse bte ogc m)
+add_subdirectory(external/lua)
+target_link_libraries(${TARGET} wiiuse bte ogc m PRIVATE lua)
+targeT_include_directories(${TARGET} PRIVATE external/lua/src)
 
 set_target_properties(${TARGET} PROPERTIES
     OUTPUT_NAME boot
