@@ -1,25 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <vector>
 
-struct PointerState
-{
-    bool valid = false;
-    float x = 0, y = 0;
-};
-
-struct InputState
-{
-    PointerState pointer;
-    uint32_t down = 0, held = 0, up = 0;
-};
+#include "../core/input_events.h"
 
 bool videoInit();
 void videoRender();
 void videoExit();
 
 bool inputInit();
-void inputPoll(InputState& out);
+void inputPoll(InputFrame* outFrame, std::vector<InputEvent>& outEvents);
 
 bool timeInit();
 uint64_t timeTicks();

@@ -6,7 +6,7 @@
     <release_date>20260217000000</release_date>
     <short_description>A scripting environment for the Wii</short_description>
     <long_description>
-        WiiForge is a scripting environment for the Nintendo Wii. Write, run, and save scripts directly on your console
-        with a built-in editor, runtime, and SD card support.
+        A scripting environment for the Nintendo Wii. Write, run, and save scripts directly on your console with a
+        built-in editor, runtime, and SD card support.
     </long_description>
 </app>
