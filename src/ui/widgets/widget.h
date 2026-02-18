@@ -16,6 +16,7 @@ public:
     Widget* parent = nullptr;
     std::vector<std::unique_ptr<Widget>> children;
     Font* font = nullptr;
+    float radiusX = 12.0f, radiusY = 12.0f;
 
     template <typename T, typename... Args>
     T* addChild(Args&&... args)
@@ -33,7 +34,7 @@ public:
         if (!visible) return nullptr;
         for (int i = static_cast<int>(children.size()) - 1; i >= 0; --i)
             if (Widget* hit = children[i]->hitTest(px, py)) return hit;
-        if (bounds.contains(px, py)) return this;
+        if (worldBounds().contains(px, py)) return this;
 
         return nullptr;
     }
@@ -52,6 +53,18 @@ public:
         if (!visible) return;
         onDraw();
         for (const auto& c : children) c->draw();
+    }
+
+    [[nodiscard]] Rect worldBounds() const
+    {
+        Rect r = bounds;
+        for (const Widget* p = parent; p; p = p->parent)
+        {
+            r.x += p->bounds.x;
+            r.y += p->bounds.y;
+        }
+
+        return r;
     }
 
     [[nodiscard]] Font* getFont() const { return font ? font : parent ? parent->getFont() : nullptr; }

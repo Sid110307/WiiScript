@@ -2,9 +2,9 @@
 
 #include "./widget.h"
 #include "../theme.h"
+#include "../../gfx/drawing.h"
 
 #include <functional>
-#include <grrlib.h>
 
 class Button : public Widget
 {
@@ -19,7 +19,7 @@ public:
             return false;
         if (e.type == Input::InputEvent::Type::PointerMove)
         {
-            hovered = e.pointer.valid && bounds.contains(e.pointer.x, e.pointer.y);
+            hovered = e.pointer.valid && worldBounds().contains(e.pointer.x, e.pointer.y);
             return false;
         }
 
@@ -47,15 +47,16 @@ public:
 protected:
     void onDraw() const override
     {
+        const Rect r = worldBounds();
+
         uint32_t col = theme().btn;
         if (pressed) col = theme().btnDown;
         else if (hovered) col = theme().btnHover;
 
-        GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, col, true);
-        GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, theme().panelBorder, false);
+        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, col, true);
+        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
         if (const Font* f = getFont(); f && f->isValid() && !text.empty())
-            f->drawText(text, bounds.x + (bounds.w - f->textWidth(text)) / 2,
-                        bounds.y + (bounds.h - f->textHeight()) / 2, theme().text);
+            f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, theme().text);
     }
 };

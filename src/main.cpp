@@ -58,8 +58,8 @@ int main()
         for (const auto& e : events) ui.routeEvent(e);
         ui.draw();
 
-        if (frame.pointer.valid) GRRLIB_Circle(frame.pointer.x, frame.pointer.y, 10, 0xFFCC00FF, true);
-        else GRRLIB_Rectangle(10, 10, 10, 10, 0xFFCC00FF, true);
+        if (frame.pointer.valid) GRRLIB_Circle(frame.pointer.x, frame.pointer.y, 10, theme().accent, true);
+        else GRRLIB_Rectangle(10, 10, 10, 10, theme().accent, true);
 
         GRRLIB_Render();
     }

@@ -15,7 +15,7 @@ class UIRoot
 public:
     std::unique_ptr<Panel> root = std::make_unique<Panel>();
     Input::PointerState pointer = {};
-    Widget* capture = nullptr;
+    Widget *capture = nullptr, *hoverWidget = nullptr;
 
     Panel *left = nullptr, *center = nullptr, *bottom = nullptr;
     Button *btnRun = nullptr, *btnStop = nullptr, *btnSave = nullptr;

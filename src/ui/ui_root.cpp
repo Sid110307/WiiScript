@@ -23,8 +23,8 @@ void UIRoot::init(Font& font)
 
 void UIRoot::layout(const float screenW, const float screenH) const
 {
-    Rect content({0, 0, screenW, screenH});
-    root->bounds = content;
+    root->bounds = Rect({0, 0, screenW, screenH});
+    Rect content = root->bounds;
     const float leftW = showLeft ? 200.0f : 0.0f, bottomH = showBottom ? 140.0f : 0.0f;
 
     if (left)
@@ -32,7 +32,7 @@ void UIRoot::layout(const float screenW, const float screenH) const
         left->visible = showLeft;
         left->bounds = leftW > 0.0f ? content.takeLeft(leftW) : Rect::empty();
 
-        if (fileList) fileList->bounds = left->bounds.inset(10);
+        if (fileList) fileList->bounds = Rect({0, 0, left->bounds.w, left->bounds.h}).inset(10);
     }
 
     if (bottom)
@@ -40,13 +40,13 @@ void UIRoot::layout(const float screenW, const float screenH) const
         bottom->visible = showBottom;
         bottom->bounds = bottomH > 0.0f ? content.takeBottom(bottomH) : Rect::empty();
 
-        if (keyboard) keyboard->bounds = bottom->bounds.inset(10);
+        if (keyboard) keyboard->bounds = Rect({0, 0, bottom->bounds.w, bottom->bounds.h}).inset(10);
     }
 
     if (center)
     {
         center->bounds = content;
-        Rect toolbar = center->bounds.inset(10).takeTop(28);
+        Rect toolbar = Rect({0, 0, center->bounds.w, center->bounds.h}).inset(10).takeTop(28);
 
         if (btnRun) btnRun->bounds = toolbar.takeRowItem(60, 28, 10);
         if (btnStop) btnStop->bounds = toolbar.takeRowItem(60, 28, 10);
@@ -58,7 +58,17 @@ void UIRoot::update(const double dt) const { root->update(dt); }
 
 void UIRoot::routeEvent(const Input::InputEvent& e)
 {
-    if (e.type == Input::InputEvent::Type::PointerMove) pointer = e.pointer;
+    if (e.type == Input::InputEvent::Type::PointerMove)
+    {
+        pointer = e.pointer;
+        Widget* hit = root->hitTest(pointer.x, pointer.y);
+
+        if (hoverWidget && hoverWidget != hit) hoverWidget->onEvent(e);
+        if (hit) hit->onEvent(e);
+
+        hoverWidget = hit;
+        return;
+    }
 
     if (e.type == Input::InputEvent::Type::KeyDown)
     {
@@ -107,9 +117,6 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
             return;
         }
     }
-
-    if (e.type == Input::InputEvent::Type::PointerMove)
-        if (Widget* hit = root->hitTest(pointer.x, pointer.y)) hit->onEvent(e);
 }
 
 void UIRoot::draw() const { root->draw(); }

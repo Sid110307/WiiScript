@@ -3,8 +3,6 @@
 #include "./widget.h"
 #include "../theme.h"
 
-#include <grrlib.h>
-
 class Panel : public Widget
 {
 public:
@@ -13,7 +11,9 @@ public:
 protected:
     void onDraw() const override
     {
-        GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, theme().panel, true);
-        if (drawBorder) GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, theme().panelBorder, false);
+        const Rect r = worldBounds();
+
+        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
+        if (drawBorder) roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
     }
 };

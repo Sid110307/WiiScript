@@ -1,6 +1,6 @@
 #pragma once
 
-constexpr float KX = 20.0f, KY = 20.0f, KW = 50.0f, KH = 50.0f, GAP = 5.0f, CAPS_W = KW * 1.75f + GAP * 0.75f,
+constexpr float KW = 30.0f, KH = 24.0f, GAP = 4.0f, KX = 1.0f, KY = 2.0f, CAPS_W = KW * 1.75f + GAP * 0.75f,
                 SHIFT_W = KW * 2.25f + GAP * 1.25f;
 
 struct KeyboardKey
@@ -52,11 +52,8 @@ constexpr KeyboardKey keyboardKeys[] = {
     {false, false, KX + SHIFT_W + GAP + 6 * (KW + GAP), KY + 3 * (KH + GAP), KW, KH, "m", "M"},
 
     {true, false, KX + 3 * (KW + GAP), KY + 4 * (KH + GAP), KW * 6 + GAP * 5, KH, " ", " "},
-    {true, false, KX + 10 * (KW + GAP), KY + 0 * (KH + GAP), KW * 2 + GAP, KH, "BACK ⌫", "BACK ⌫"},
-    {
-        true, false, KX + CAPS_W + GAP + 9 * (KW + GAP), KY + 2 * (KH + GAP), KW * 2.25f + GAP * 1.25f, KH, "ENTER ⏎",
-        "ENTER ⏎"
-    },
-    {true, false, KX, KY + 3 * (KH + GAP), SHIFT_W, KH, "SHIFT ⇧", "SHIFT ⇧"},
-    {true, false, KX, KY + 2 * (KH + GAP), CAPS_W, KH, "CAPS ⇪", "CAPS ⇪"},
+    {true, false, KX + 10 * (KW + GAP), KY + 0 * (KH + GAP), KW * 2 + GAP, KH, "BACK", "BACK"},
+    {true, false, KX + CAPS_W + GAP + 9 * (KW + GAP), KY + 2 * (KH + GAP), KW * 2.25f + GAP * 1.25f, KH, "ENTER","ENTER"},
+    {true, false, KX, KY + 3 * (KH + GAP), SHIFT_W, KH, "SHIFT", "SHIFT"},
+    {true, false, KX, KY + 2 * (KH + GAP), CAPS_W, KH, "CAPS", "CAPS"},
 };
