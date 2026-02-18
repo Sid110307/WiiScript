@@ -3,25 +3,6 @@
 
 static Input::PointerState lastPtr = {};
 
-static void emitPointer(std::vector<Input::InputEvent>& ev, const Input::PointerState& p)
-{
-    if (p.valid == lastPtr.valid && p.x == lastPtr.x && p.y == lastPtr.y) return;
-
-    ev.push_back({.type = Input::InputEvent::Type::PointerMove, .pointer = p});
-    lastPtr = p;
-}
-
-static void emitCommand(std::vector<Input::InputEvent>& ev, const Input::Command c)
-{
-    ev.push_back({.type = Input::InputEvent::Type::Command, .cmd = c});
-}
-
-static void emitKey(std::vector<Input::InputEvent>& ev, const Input::InputEvent::Type t, const Input::Key k)
-{
-    ev.push_back({.type = t, .key = k});
-}
-
-
 bool Input::init()
 {
     WPAD_Init();
@@ -41,11 +22,12 @@ void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
     ir_t ir;
     WPAD_IR(WPAD_CHAN_0, &ir);
 
-    PointerState p = {};
-    p.valid = ir.valid != 0;
-    p.x = ir.x;
-    p.y = ir.y;
-    emitPointer(outEvents, p);
+    const PointerState p = {.valid = ir.valid != 0, .x = ir.x, .y = ir.y,};
+    if (p.valid != lastPtr.valid || p.x != lastPtr.x || p.y != lastPtr.y)
+    {
+        outEvents.push_back({.type = InputEvent::Type::PointerMove, .pointer = p});
+        lastPtr = p;
+    }
 
     if (outFrame)
     {
@@ -54,23 +36,36 @@ void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
         outFrame->wpadHeld = held;
         outFrame->wpadUp = up;
     }
-    if (down & WPAD_BUTTON_HOME) emitCommand(outEvents, Command::Quit);
-    if (down & WPAD_BUTTON_PLUS) emitCommand(outEvents, Command::Run);
-    if (down & WPAD_BUTTON_MINUS) emitCommand(outEvents, Command::Stop);
-    if (down & WPAD_BUTTON_1) emitCommand(outEvents, Command::ToggleFileBrowser);
-    if (down & WPAD_BUTTON_2) emitCommand(outEvents, Command::ToggleConsole);
 
-    if (down & WPAD_BUTTON_UP) emitKey(outEvents, InputEvent::Type::KeyDown, Key::Up);
-    if (up & WPAD_BUTTON_UP) emitKey(outEvents, InputEvent::Type::KeyUp, Key::Up);
-    if (down & WPAD_BUTTON_DOWN) emitKey(outEvents, InputEvent::Type::KeyDown, Key::Down);
-    if (up & WPAD_BUTTON_DOWN) emitKey(outEvents, InputEvent::Type::KeyUp, Key::Down);
-    if (down & WPAD_BUTTON_LEFT) emitKey(outEvents, InputEvent::Type::KeyDown, Key::Left);
-    if (up & WPAD_BUTTON_LEFT) emitKey(outEvents, InputEvent::Type::KeyUp, Key::Left);
-    if (down & WPAD_BUTTON_RIGHT) emitKey(outEvents, InputEvent::Type::KeyDown, Key::Right);
-    if (up & WPAD_BUTTON_RIGHT) emitKey(outEvents, InputEvent::Type::KeyUp, Key::Right);
+    if (down & WPAD_BUTTON_HOME) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Home});
+    if (up & WPAD_BUTTON_HOME) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Home});
 
-    if (down & WPAD_BUTTON_A) emitKey(outEvents, InputEvent::Type::KeyDown, Key::A);
-    if (up & WPAD_BUTTON_A) emitKey(outEvents, InputEvent::Type::KeyUp, Key::A);
-    if (down & WPAD_BUTTON_B) emitKey(outEvents, InputEvent::Type::KeyDown, Key::B);
-    if (up & WPAD_BUTTON_B) emitKey(outEvents, InputEvent::Type::KeyUp, Key::B);
+    if (down & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Up});
+    if (up & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Up});
+    if (down & WPAD_BUTTON_DOWN) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Down});
+    if (up & WPAD_BUTTON_DOWN) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Down});
+    if (down & WPAD_BUTTON_LEFT) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Left});
+    if (up & WPAD_BUTTON_LEFT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Left});
+    if (down & WPAD_BUTTON_RIGHT) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Right});
+    if (up & WPAD_BUTTON_RIGHT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Right});
+
+    if (down & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::A});
+    if (up & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::A});
+    if (down & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::B});
+    if (up & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::B});
+
+    if (down & WPAD_BUTTON_PLUS) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Plus});
+    if (up & WPAD_BUTTON_PLUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Plus});
+    if (down & WPAD_BUTTON_MINUS) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Minus});
+    if (up & WPAD_BUTTON_MINUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Minus});
+
+    if (down & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::One});
+    if (up & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::One});
+    if (down & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Two});
+    if (up & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Two});
+
+    if (down & NUNCHUK_BUTTON_C) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::C});
+    if (up & NUNCHUK_BUTTON_C) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::C});
+    if (down & NUNCHUK_BUTTON_Z) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Z});
+    if (up & NUNCHUK_BUTTON_Z) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Z});
 }

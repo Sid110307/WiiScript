@@ -38,9 +38,6 @@ bool FileSystem::init()
 
 bool isReady() { return ready; }
 
-std::string FileSystem::appRoot() { return "sd:/apps/WiiScript/"; }
-std::string FileSystem::workspaceRoot() { return "sd:/WiiScript/"; }
-
 bool FileSystem::ensureDir(const std::string& path)
 {
     std::string p = normalizePath(path);

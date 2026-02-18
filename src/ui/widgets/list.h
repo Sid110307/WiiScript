@@ -71,6 +71,18 @@ protected:
 
             if (i == selected) GRRLIB_Rectangle(bounds.x + 2, y + 2, bounds.w - 4, rowH - 4, col, true);
             GRRLIB_Line(bounds.x, y + rowH, bounds.x + bounds.w, y + rowH, theme().panelBorder);
+
+            if (const Font* f = getFont(); f && f->isValid() && !items[i].empty())
+            {
+                std::string text = items[i];
+                if (f->textWidth(items[i]) > bounds.w - 4)
+                {
+                    while (!text.empty() && f->textWidth(text + "...") > bounds.w - 4) text.pop_back();
+                    text += "...";
+                }
+
+                f->drawText(text, bounds.x + 2, y + (rowH - f->textHeight()) / 2, theme().text);
+            }
         }
     }
 };

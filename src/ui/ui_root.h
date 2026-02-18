@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "../platform/platform.h"
+#include "../keyboard/keyboard.h"
 
 #include "./widgets/widget.h"
 #include "./widgets/panel.h"
@@ -19,9 +20,10 @@ public:
     Panel *left = nullptr, *center = nullptr, *bottom = nullptr;
     Button *btnRun = nullptr, *btnStop = nullptr, *btnSave = nullptr;
     List* fileList = nullptr;
-    bool showLeft = true, showBottom = true;
+    Keyboard* keyboard = nullptr;
+    bool quit = false, showLeft = true, showBottom = true;
 
-    void init();
+    void init(Font& font);
     void layout(float screenW, float screenH) const;
     void update(double dt) const;
     void routeEvent(const Input::InputEvent& e);

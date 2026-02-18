@@ -9,6 +9,7 @@
 class Button : public Widget
 {
 public:
+    std::string text;
     std::function<void()> onClick;
     bool hovered = false, pressed = false;
 
@@ -52,5 +53,9 @@ protected:
 
         GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, col, true);
         GRRLIB_Rectangle(bounds.x, bounds.y, bounds.w, bounds.h, theme().panelBorder, false);
+
+        if (const Font* f = getFont(); f && f->isValid() && !text.empty())
+            f->drawText(text, bounds.x + (bounds.w - f->textWidth(text)) / 2,
+                        bounds.y + (bounds.h - f->textHeight()) / 2, theme().text);
     }
 };

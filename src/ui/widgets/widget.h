@@ -15,6 +15,7 @@ public:
     bool visible = true, enabled = true;
     Widget* parent = nullptr;
     std::vector<std::unique_ptr<Widget>> children;
+    Font* font = nullptr;
 
     template <typename T, typename... Args>
     T* addChild(Args&&... args)
@@ -53,6 +54,7 @@ public:
         for (const auto& c : children) c->draw();
     }
 
+    [[nodiscard]] Font* getFont() const { return font ? font : parent ? parent->getFont() : nullptr; }
     [[nodiscard]] virtual bool isFocusable() const { return false; }
 
 protected:
