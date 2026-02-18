@@ -14,18 +14,18 @@ public:
     bool hovered = false;
     float rowH = 22.0f;
 
-    bool onEvent(const InputEvent& e) override
+    bool onEvent(const Input::InputEvent& e) override
     {
         if (!visible || !enabled) return false;
-        if (e.type == InputEvent::Type::PointerMove)
+        if (e.type == Input::InputEvent::Type::PointerMove)
         {
             hovered = e.pointer.valid && bounds.contains(e.pointer.x, e.pointer.y);
             return false;
         }
 
-        if (e.type == InputEvent::Type::KeyDown && hovered)
+        if (e.type == Input::InputEvent::Type::KeyDown && hovered)
         {
-            if (e.key == Key::A)
+            if (e.key == Input::Key::A)
             {
                 if (e.pointer.valid)
                 {
@@ -36,13 +36,13 @@ public:
                 return true;
             }
 
-            if (e.key == Key::Up)
+            if (e.key == Input::Key::Up)
             {
                 if (selected > 0) selected--;
                 return true;
             }
 
-            if (e.key == Key::Down)
+            if (e.key == Input::Key::Down)
             {
                 if (selected < static_cast<int>(items.size()) - 1) selected++;
                 return true;

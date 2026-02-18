@@ -1,29 +1,28 @@
-#include "./wii_platform.h"
-
+#include "./platform.h"
 #include <wiiuse/wpad.h>
 
-static PointerState lastPtr = {};
+static Input::PointerState lastPtr = {};
 
-static void emitPointer(std::vector<InputEvent>& ev, const PointerState& p)
+static void emitPointer(std::vector<Input::InputEvent>& ev, const Input::PointerState& p)
 {
     if (p.valid == lastPtr.valid && p.x == lastPtr.x && p.y == lastPtr.y) return;
 
-    ev.push_back({.type = InputEvent::Type::PointerMove, .pointer = p});
+    ev.push_back({.type = Input::InputEvent::Type::PointerMove, .pointer = p});
     lastPtr = p;
 }
 
-static void emitCommand(std::vector<InputEvent>& ev, const Command c)
+static void emitCommand(std::vector<Input::InputEvent>& ev, const Input::Command c)
 {
-    ev.push_back({.type = InputEvent::Type::Command, .cmd = c});
+    ev.push_back({.type = Input::InputEvent::Type::Command, .cmd = c});
 }
 
-static void emitKey(std::vector<InputEvent>& ev, const InputEvent::Type t, const Key k)
+static void emitKey(std::vector<Input::InputEvent>& ev, const Input::InputEvent::Type t, const Input::Key k)
 {
     ev.push_back({.type = t, .key = k});
 }
 
 
-bool inputInit()
+bool Input::init()
 {
     WPAD_Init();
     WPAD_SetDataFormat(WPAD_CHAN_0, WPAD_FMT_BTNS_ACC_IR);
@@ -32,7 +31,7 @@ bool inputInit()
     return true;
 }
 
-void inputPoll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
+void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
 {
     outEvents.clear();
     WPAD_ScanPads();

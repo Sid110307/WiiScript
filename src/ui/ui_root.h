@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "../core/input_events.h"
+#include "../platform/platform.h"
 
 #include "./widgets/widget.h"
 #include "./widgets/panel.h"
@@ -13,7 +13,7 @@ class UIRoot
 {
 public:
     std::unique_ptr<Panel> root = std::make_unique<Panel>();
-    PointerState pointer = {};
+    Input::PointerState pointer = {};
     Widget* capture = nullptr;
 
     Panel *left = nullptr, *center = nullptr, *bottom = nullptr;
@@ -24,6 +24,6 @@ public:
     void init();
     void layout(float screenW, float screenH) const;
     void update(double dt) const;
-    void routeEvent(const InputEvent& e);
+    void routeEvent(const Input::InputEvent& e);
     void draw() const;
 };

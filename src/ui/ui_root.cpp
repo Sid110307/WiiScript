@@ -41,21 +41,21 @@ void UIRoot::layout(const float screenW, const float screenH) const
 
 void UIRoot::update(const double dt) const { root->update(dt); }
 
-void UIRoot::routeEvent(const InputEvent& e)
+void UIRoot::routeEvent(const Input::InputEvent& e)
 {
-    if (e.type == InputEvent::Type::PointerMove) pointer = e.pointer;
+    if (e.type == Input::InputEvent::Type::PointerMove) pointer = e.pointer;
 
-    if (e.type == InputEvent::Type::Command)
+    if (e.type == Input::InputEvent::Type::Command)
     {
-        if (e.cmd == Command::ToggleFileBrowser) showLeft = !showLeft;
-        if (e.cmd == Command::ToggleConsole) showBottom = !showBottom;
+        if (e.cmd == Input::Command::ToggleFileBrowser) showLeft = !showLeft;
+        if (e.cmd == Input::Command::ToggleConsole) showBottom = !showBottom;
 
         return;
     }
 
-    if (e.type == InputEvent::Type::KeyDown && e.key == Key::A)
+    if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
     {
-        InputEvent e2 = e;
+        Input::InputEvent e2 = e;
         e2.pointer = pointer;
 
         capture = root->hitTest(pointer.x, pointer.y);
@@ -64,9 +64,9 @@ void UIRoot::routeEvent(const InputEvent& e)
         return;
     }
 
-    if (e.type == InputEvent::Type::KeyUp && e.key == Key::A)
+    if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
     {
-        InputEvent e2 = e;
+        Input::InputEvent e2 = e;
         e2.pointer = pointer;
 
         if (capture)
@@ -78,7 +78,7 @@ void UIRoot::routeEvent(const InputEvent& e)
         }
     }
 
-    if (e.type == InputEvent::Type::PointerMove)
+    if (e.type == Input::InputEvent::Type::PointerMove)
         if (Widget* hit = root->hitTest(pointer.x, pointer.y)) hit->onEvent(e);
 }
 

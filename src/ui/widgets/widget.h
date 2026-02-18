@@ -4,7 +4,7 @@
 #include <memory>
 
 #include "../theme.h"
-#include "../../core/input_events.h"
+#include "../../platform/platform.h"
 
 class Widget
 {
@@ -37,7 +37,7 @@ public:
         return nullptr;
     }
 
-    virtual bool onEvent(const InputEvent&) { return false; }
+    virtual bool onEvent(const Input::InputEvent&) { return false; }
 
     void update(const double dt)
     {

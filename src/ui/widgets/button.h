@@ -12,23 +12,24 @@ public:
     std::function<void()> onClick;
     bool hovered = false, pressed = false;
 
-    bool onEvent(const InputEvent& e) override
+    bool onEvent(const Input::InputEvent& e) override
     {
-        if ((!visible || !enabled) && !(e.type == InputEvent::Type::KeyUp && e.key == Key::A && pressed)) return false;
-        if (e.type == InputEvent::Type::PointerMove)
+        if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
+            return false;
+        if (e.type == Input::InputEvent::Type::PointerMove)
         {
             hovered = e.pointer.valid && bounds.contains(e.pointer.x, e.pointer.y);
             return false;
         }
 
-        if (e.type == InputEvent::Type::KeyDown && e.key == Key::A)
+        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
             if (hovered)
             {
                 pressed = true;
                 return true;
             }
 
-        if (e.type == InputEvent::Type::KeyUp && e.key == Key::A)
+        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
             if (pressed)
             {
                 pressed = false;
