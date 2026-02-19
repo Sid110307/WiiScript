@@ -65,8 +65,8 @@ int main()
         GRRLIB_FillScreen(theme().bg);
 
         ui.layout(640, 480);
-        ui.update(dt);
         for (const auto& e : events) ui.routeEvent(e);
+        ui.update(dt);
         ui.draw();
 
         if (frame.pointer.valid) GRRLIB_Circle(frame.pointer.x, frame.pointer.y, 10, theme().accent, true);

@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <grrlib.h>
 
-constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = 40;
+constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = ANGLES + 4;
 
 struct TrigLUT
 {

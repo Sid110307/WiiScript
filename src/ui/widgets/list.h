@@ -10,13 +10,13 @@ class List : public Widget
 {
 public:
     explicit List(std::vector<std::string> items = {},
-                  std::function<void(const std::string &)> onItemSelected = nullptr)
+                  std::function<void(const std::string&)> onItemSelected = nullptr)
         : items(std::move(items)), onItemSelected(std::move(onItemSelected))
     {
     }
 
     std::vector<std::string> items;
-    std::function<void(const std::string &)> onItemSelected;
+    std::function<void(const std::string&)> onItemSelected;
 
     int selected = -1;
     bool hovered = false;
@@ -33,34 +33,41 @@ public:
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::KeyDown && hovered)
+        if (e.type != Input::InputEvent::Type::KeyDown) return false;
+        if (!hovered) return false;
+
+        const int n = static_cast<int>(items.size());
+        if (n <= 0)
         {
-            if (e.key == Input::Key::A)
-            {
-                if (e.pointer.valid)
-                    if (const auto idx = static_cast<int>((e.pointer.y - r.y) / rowH); idx >= 0 &&
-                        idx < static_cast<int>(items.size()))
-                        selected = idx;
-                if (selected >= 0 && onItemSelected) onItemSelected(items[selected]);
-            }
+            selected = -1;
+            return true;
+        }
+        if (selected >= n) selected = n - 1;
 
-            if (e.key == Input::Key::Up)
-            {
-                if (selected > 0) selected--;
-                return true;
-            }
+        if (e.key == Input::Key::A)
+        {
+            if (e.pointer.valid) selected = std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1);
+            if (selected >= 0 && selected < n && onItemSelected) onItemSelected(items[selected]);
 
-            if (e.key == Input::Key::Down)
-            {
-                if (selected < static_cast<int>(items.size()) - 1) selected++;
-                return true;
-            }
+            return true;
+        }
+
+        if (e.key == Input::Key::Up)
+        {
+            selected = selected > 0 ? selected - 1 : n - 1;
+            return true;
+        }
+
+        if (e.key == Input::Key::Down)
+        {
+            selected = selected >= 0 && selected < n - 1 ? selected + 1 : 0;
+            return true;
         }
 
         return false;
     }
 
-    [[nodiscard]] bool isFocusable() const override { return enabled; }
+    [[nodiscard]] bool isFocusable() const override { return visible && enabled; }
 
 protected:
     void onDraw() const override
@@ -73,22 +80,12 @@ protected:
         for (int i = 0; i < std::min(static_cast<int>(items.size()), static_cast<int>(r.h / rowH)); ++i)
         {
             const float y = r.y + static_cast<float>(i) * rowH;
-            const uint32_t col = i == selected ? theme().accent : theme().btn;
 
-            if (i == selected) GRRLIB_Rectangle(r.x + 2, y + 2, r.w - 4, rowH - 4, col, true);
+            if (i == selected) GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().accent : theme().btn, true);
             GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
             if (const Font* f = getFont(); f && f->isValid() && !items[i].empty())
-            {
-                std::string text = items[i];
-                if (f->textWidth(items[i]) > r.w - 4)
-                {
-                    while (!text.empty() && f->textWidth(text + "...") > r.w - 4) text.pop_back();
-                    text += "...";
-                }
-
-                f->drawText(text, r.x + 2, y + (rowH - f->textHeight()) / 2, theme().text);
-            }
+                f->drawText(items[i], r.x + 10, y + (rowH - f->textHeight()) / 2, theme().text);
         }
     }
 };

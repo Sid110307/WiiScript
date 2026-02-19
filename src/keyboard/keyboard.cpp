@@ -81,15 +81,15 @@ void Keyboard::layoutKeys() const
     const Rect src = computeBounds(keysList);
 
     if (dest.w <= 0.0f || dest.h <= 0.0f || src.w <= 0.0f || src.h <= 0.0f) return;
-    const float scale = std::min(dest.w / src.w, dest.h / src.h),
-                offsetX = dest.x - src.x * scale + (dest.w - src.w * scale) / 2.0f,
-                offsetY = dest.y - src.y * scale + (dest.h - src.h * scale) / 2.0f;
+    const float scaleX = dest.w / src.w, scaleY = dest.h / src.h,
+                offsetX = dest.x - src.x * scaleX + (dest.w - src.w * scaleX) / 2.0f,
+                offsetY = dest.y - src.y * scaleY + (dest.h - src.h * scaleY) / 2.0f;
 
     const size_t n = std::min(keyButtons.size(), keysList.size());
     for (size_t i = 0; i < n; ++i)
     {
         const auto& k = keysList[i];
-        keyButtons[i]->bounds = {k.x * scale + offsetX, k.y * scale + offsetY, k.w * scale, k.h * scale};
+        keyButtons[i]->bounds = {k.x * scaleX + offsetX, k.y * scaleY + offsetY, k.w * scaleX, k.h * scaleY};
     }
 }
 

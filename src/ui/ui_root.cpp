@@ -13,7 +13,8 @@ void UIRoot::init(Font& codeFont, Font& uiFont)
     btnStop = center->addChild<Button>("Stop");
     btnSave = center->addChild<Button>("Save");
 
-    fileList = left->addChild<List>();
+    std::vector<std::string> dummy = {"File1.txt", "File2.txt", "Folder1/", "Folder2/"};
+    fileList = left->addChild<List>(dummy);
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
         fileList->items.clear();

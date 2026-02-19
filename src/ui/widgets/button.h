@@ -47,7 +47,7 @@ public:
         return false;
     }
 
-    [[nodiscard]] bool isFocusable() const override { return enabled; }
+    [[nodiscard]] bool isFocusable() const override { return visible && enabled; }
 
 protected:
     void onDraw() const override
