@@ -5,37 +5,43 @@
 #include <algorithm>
 #include <grrlib.h>
 
+constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = 40;
 
-inline void roundRectangle(const float x, const float y, const float width, const float height, const float radiusX,
-                           const float radiusY, const uint32_t color, const bool filled)
+struct TrigLUT
 {
-    if (width == 0u || height == 0u) return;
-    constexpr int kStepDeg = 10, kAngles = 360 / kStepDeg, kTotalVertices = 40;
+    std::array<float, ANGLES> c = {}, s = {};
 
-    struct TrigLUT
+    TrigLUT()
     {
-        std::array<float, kAngles> c = {}, s = {};
-
-        TrigLUT()
+        constexpr float degToRad = M_PI / 180.0f;
+        for (int i = 0; i < ANGLES; ++i)
         {
-            constexpr float degToRad = M_PI / 180.0f;
-            for (int i = 0; i < kAngles; ++i)
-            {
-                const float a = static_cast<float>(i * kStepDeg) * degToRad;
+            const float a = static_cast<float>(i * STEP_DEG) * degToRad;
 
-                c[i] = std::cos(a);
-                s[i] = std::sin(a);
-            }
+            c[i] = std::cos(a);
+            s[i] = std::sin(a);
         }
-    };
+    }
+};
 
-    static const TrigLUT lut = {};
+static const TrigLUT lut = {};
+
+inline void roundedRectangle(const float x, const float y, const float width, const float height, const float radiusX,
+                             const float radiusY, const uint32_t color, const bool filled)
+{
+    if (width <= 0.0f || height <= 0.0f) return;
     const float rx = std::clamp(radiusX, 0.0f, 0.5f * width), ry = std::clamp(radiusY, 0.0f, 0.5f * height),
                 innerW = width - 2.0f * rx, innerH = height - 2.0f * ry, cx = x + 0.5f * width, cy = y + 0.5f * height,
                 brCx = cx + 0.5f * innerW, brCy = cy + 0.5f * innerH;
 
-    std::array<guVector, kTotalVertices> v = {};
-    std::array<uint32_t, kTotalVertices> col = {};
+    if (rx <= 0.0f || ry <= 0.0f)
+    {
+        GRRLIB_Rectangle(x, y, width, height, color, filled);
+        return;
+    }
+
+    std::array<guVector, VERTICES> v = {};
+    std::array<uint32_t, VERTICES> col = {};
 
     auto setV = [&](const int idx, const float vx, const float vy) noexcept
     {
@@ -60,5 +66,5 @@ inline void roundRectangle(const float x, const float y, const float width, cons
     arc(30, 27, 35, brCx, brCy - innerH);
     setV(39, v[0].x, v[0].y);
 
-    GRRLIB_GXEngine(v.data(), col.data(), kTotalVertices, filled ? GX_TRIANGLEFAN : GX_LINESTRIP);
+    GRRLIB_GXEngine(v.data(), col.data(), VERTICES, filled ? GX_TRIANGLEFAN : GX_LINESTRIP);
 }

@@ -8,24 +8,18 @@
 
 static bool ready = false;
 
-static bool endsWithSlash(const std::string& path)
-{
-    return !path.empty() && (path.back() == '/' || path.back() == '\\');
-}
-
-static std::string normalizePath(std::string path)
+static std::string normalize(std::string path)
 {
     for (auto& c : path) if (c == '\\') c = '/';
     return path;
 }
 
-
 static std::string join(const std::string& a, const std::string& b)
 {
-    if (a.empty()) return normalizePath(b);
-    if (b.empty()) return normalizePath(a);
-    if (endsWithSlash(a)) return normalizePath(a + b);
-    return normalizePath(a + "/" + b);
+    if (a.empty()) return normalize(b);
+    if (b.empty()) return normalize(a);
+    if (a.back() == '/' || a.back() == '\\') return normalize(a + b);
+    return normalize(a + "/" + b);
 }
 
 bool FileSystem::init()
@@ -36,11 +30,11 @@ bool FileSystem::init()
     return ready;
 }
 
-bool isReady() { return ready; }
+bool FileSystem::isReady() { return ready; }
 
 bool FileSystem::ensureDir(const std::string& path)
 {
-    std::string p = normalizePath(path);
+    std::string p = normalize(path);
     if (p.empty()) return false;
     if (isDir(p)) return true;
 
@@ -54,7 +48,7 @@ bool FileSystem::ensureDir(const std::string& path)
     size_t i = 0;
     while (i < p.size())
     {
-        size_t j = p.find('/', i);
+        const size_t j = p.find('/', i);
         std::string part = j == std::string::npos ? p.substr(i) : p.substr(i, j - i);
 
         if (!part.empty())
@@ -73,13 +67,13 @@ bool FileSystem::ensureDir(const std::string& path)
 bool FileSystem::exists(const std::string& path)
 {
     struct stat st = {};
-    return stat(normalizePath(path).c_str(), &st) == 0;
+    return stat(normalize(path).c_str(), &st) == 0;
 }
 
 bool FileSystem::isDir(const std::string& path)
 {
     struct stat st = {};
-    if (stat(normalizePath(path).c_str(), &st) != 0) return false;
+    if (stat(normalize(path).c_str(), &st) != 0) return false;
 
     return S_ISDIR(st.st_mode);
 }
@@ -87,7 +81,7 @@ bool FileSystem::isDir(const std::string& path)
 bool FileSystem::listDir(const std::string& path, std::vector<DirEntry>& outEntries, bool sort)
 {
     outEntries.clear();
-    std::string p = normalizePath(path);
+    const std::string p = normalize(path);
     if (p.empty()) return false;
 
     DIR* dir = opendir(p.c_str());
@@ -128,10 +122,10 @@ bool FileSystem::listDir(const std::string& path, std::vector<DirEntry>& outEntr
     return true;
 }
 
-bool FileSystem::readFile(const std::string& path, std::string& outData)
+bool FileSystem::readFile(const std::string& path, std::vector<uint8_t>& outData)
 {
     outData.clear();
-    const std::string p = normalizePath(path);
+    const std::string p = normalize(path);
     if (p.empty()) return false;
 
     FILE* f = fopen(p.c_str(), "rb");
@@ -166,34 +160,18 @@ bool FileSystem::readFile(const std::string& path, std::string& outData)
     }
 
     fclose(f);
-    std::string normalize;
-    normalize.reserve(outData.size());
-
-    for (size_t i = 0; i < outData.size(); ++i)
-        if (const char c = outData[i]; c == '\r')
-        {
-            if (i + 1 < outData.size() && outData[i + 1] == '\n') continue;
-            normalize.push_back('\n');
-        }
-        else normalize.push_back(c);
-
-    outData.swap(normalize);
     return true;
 }
 
-bool FileSystem::writeFile(const std::string& path, const std::string& data)
+bool FileSystem::writeFile(const std::string& path, const std::vector<uint8_t>& data)
 {
-    const std::string p = normalizePath(path);
-    if (p.empty()) return false;
+    const std::string p = normalize(path);
 
-    auto slash = p.find_last_of('/');
-    if (slash != std::string::npos)
-    {
-        const std::string dir = p.substr(0, slash);
-        if (!ensureDir(dir)) return false;
-    }
+    if (p.empty() || p.rfind(workspaceRoot, 0) != 0) return false;
+    if (const auto slash = p.find_last_of('/'); slash != std::string::npos && !ensureDir(p.substr(0, slash)))
+        return false;
 
-    std::string temp = p + ".tmp";
+    const std::string temp = p + ".tmp";
     FILE* f = fopen(temp.c_str(), "wb");
     if (!f) return false;
 

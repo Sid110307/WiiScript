@@ -1,23 +1,26 @@
 #include "./ui_root.h"
 
-void UIRoot::init(Font& font)
+void UIRoot::init(Font& codeFont, Font& uiFont)
 {
-    root->font = &font;
+    (void)codeFont;
+    root->font = &uiFont;
 
     left = root->addChild<Panel>();
     center = root->addChild<Panel>();
     bottom = root->addChild<Panel>();
 
-    btnRun = center->addChild<Button>();
-    btnStop = center->addChild<Button>();
-    btnSave = center->addChild<Button>();
+    btnRun = center->addChild<Button>("Run");
+    btnStop = center->addChild<Button>("Stop");
+    btnSave = center->addChild<Button>("Save");
 
     fileList = left->addChild<List>();
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
-        for (std::size_t i = 0; i < entries.size() && i < fileList->items.size(); ++i)
-            fileList->items[i] = entries[i].name;
+    {
+        fileList->items.clear();
+        for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
+    }
 
-    keyboard = bottom->addChild<Keyboard>(font);
+    keyboard = bottom->addChild<Keyboard>(uiFont);
     keyboard->visible = showBottom;
 }
 

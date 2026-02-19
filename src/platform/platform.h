@@ -60,7 +60,7 @@ namespace Input
     };
 
     bool init();
-    void poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents);
+    void poll(InputFrame * outFrame, std::vector<InputEvent> & outEvents);
 }
 
 namespace Time
@@ -87,8 +87,8 @@ namespace FileSystem
     bool isDir(const std::string& path);
 
     bool listDir(const std::string& path, std::vector<DirEntry>& outEntries, bool sort = true);
-    bool readFile(const std::string& path, std::string& outData);
-    bool writeFile(const std::string& path, const std::string& data);
+    bool readFile(const std::string& path, std::vector<uint8_t>& outData);
+    bool writeFile(const std::string& path, const std::vector<uint8_t>& data);
 
     inline std::string appRoot = "sd:/apps/WiiScript/", workspaceRoot = "sd:/WiiScript/";
 }

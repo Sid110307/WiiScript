@@ -13,7 +13,7 @@ void KeyButton::onDraw() const
 
     const char* label = key.val;
     const Rect r = worldBounds();
-    if (!key.control && (keys->shift || keys->caps)) label = key.shiftVal;
+    if (keys->shift || keys->caps) label = key.shiftVal;
 
     font->drawText(label, r.x + (r.w - font->textWidth(label)) / 2, r.y + (r.h - font->textHeight()) / 2, theme().text);
 }
@@ -25,9 +25,13 @@ Keyboard::Keyboard(Font& font) : font(&font)
     {
         const KeyboardKey& k = keys.keyAt(i);
         auto* btn = addChild<KeyButton>(keys, font, k);
-
         btn->bounds = {k.x, k.y, k.w, k.h};
-        btn->onClick = [this, &k] { activateKey(k.control ? k.val : keys.shift || keys.caps ? k.shiftVal : k.val); };
+
+        btn->onClick = [this, i]
+        {
+            const KeyboardKey& kk = keys.keyAt(i);
+            activateKey(keys.shift || keys.caps ? kk.shiftVal : kk.val);
+        };
     }
 }
 
@@ -38,21 +42,22 @@ void Keyboard::onDraw() const
 {
     const Rect r = worldBounds();
 
-    roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
-    roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
+    roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
+    roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 }
 
 void Keyboard::activateKey(const std::string& keyText)
 {
     if (keyText.empty()) return;
 
-    if (keyText == "BACK")
+    if (keyText == "Backspace")
     {
         if (!textValue.empty()) textValue.pop_back();
     }
-    else if (keyText == "ENTER") textValue.push_back('\n');
-    else if (keyText == "CAPS") keys.caps = !keys.caps;
-    else if (keyText == "SHIFT") keys.shift = !keys.shift;
+    else if (keyText == "Tab") textValue.push_back('\t');
+    else if (keyText == "Enter") textValue.push_back('\n');
+    else if (keyText == "Caps") keys.caps = !keys.caps;
+    else if (keyText == "Shift") keys.shift = !keys.shift;
     else
     {
         keys.shift = false;

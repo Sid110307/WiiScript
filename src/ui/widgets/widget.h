@@ -5,6 +5,7 @@
 
 #include "../theme.h"
 #include "../../platform/platform.h"
+#include "../../gfx/font.h"
 
 class Widget
 {
@@ -16,7 +17,7 @@ public:
     Widget* parent = nullptr;
     std::vector<std::unique_ptr<Widget>> children;
     Font* font = nullptr;
-    float radiusX = 12.0f, radiusY = 12.0f;
+    float radiusX = 8.0f, radiusY = 8.0f;
 
     template <typename T, typename... Args>
     T* addChild(Args&&... args)

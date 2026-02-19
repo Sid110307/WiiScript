@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include "../gfx/font.h"
 
 struct Rect
 {
@@ -82,5 +81,4 @@ struct Theme
     uint32_t text = 0xE0E0E0FF;
 };
 
-const Font& font();
 const Theme& theme();

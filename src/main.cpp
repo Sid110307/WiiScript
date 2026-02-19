@@ -1,4 +1,4 @@
-#include <cstdlib>
+#include <cstdio>
 
 #include <grrlib.h>
 #include <ogc/video.h>
@@ -9,6 +9,8 @@
 
 int main()
 {
+    SYS_STDIO_Report(true);
+
     if (!Input::init())
     {
         printf("Failed to initialize input!\n");
@@ -24,8 +26,12 @@ int main()
         printf("Failed to initialize filesystem!\n");
         return EXIT_FAILURE;
     }
+    if (!FileSystem::ensureDir(FileSystem::workspaceRoot))
+    {
+        printf("Failed to create workspace directory!\n");
+        return EXIT_FAILURE;
+    }
 
-    FileSystem::ensureDir(FileSystem::workspaceRoot);
     VIDEO_Init();
     GRRLIB_Init();
     GRRLIB_SetBackgroundColour(0, 0, 0, 255);
@@ -34,15 +40,20 @@ int main()
     Input::InputFrame frame = {};
     std::vector<Input::InputEvent> events;
 
-    Font font;
-    if (!font.load(FileSystem::appRoot + "font.ttf", 16))
+    Font codeFont, uiFont;
+    if (!codeFont.load(FileSystem::appRoot + "code.ttf", 16))
     {
-        printf("Failed to load font!\n");
+        printf("Failed to load code font!\n");
+        return EXIT_FAILURE;
+    }
+    if (!uiFont.load(FileSystem::appRoot + "ui.ttf", 14))
+    {
+        printf("Failed to load UI font!\n");
         return EXIT_FAILURE;
     }
 
     UIRoot ui;
-    ui.init(font);
+    ui.init(codeFont, uiFont);
 
     while (true)
     {

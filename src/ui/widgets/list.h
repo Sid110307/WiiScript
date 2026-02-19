@@ -9,8 +9,16 @@
 class List : public Widget
 {
 public:
+    explicit List(std::vector<std::string> items = {},
+                  std::function<void(const std::string &)> onItemSelected = nullptr)
+        : items(std::move(items)), onItemSelected(std::move(onItemSelected))
+    {
+    }
+
     std::vector<std::string> items;
-    size_t selected = -1;
+    std::function<void(const std::string &)> onItemSelected;
+
+    int selected = -1;
     bool hovered = false;
     float rowH = 22.0f;
 
@@ -30,9 +38,10 @@ public:
             if (e.key == Input::Key::A)
             {
                 if (e.pointer.valid)
-                    if (const auto index = static_cast<size_t>((e.pointer.y - r.y) / rowH); index < items.size())
-                        selected = index;
-                return true;
+                    if (const auto idx = static_cast<int>((e.pointer.y - r.y) / rowH); idx >= 0 &&
+                        idx < static_cast<int>(items.size()))
+                        selected = idx;
+                if (selected >= 0 && onItemSelected) onItemSelected(items[selected]);
             }
 
             if (e.key == Input::Key::Up)
@@ -43,7 +52,7 @@ public:
 
             if (e.key == Input::Key::Down)
             {
-                if (selected < items.size() - 1) selected++;
+                if (selected < static_cast<int>(items.size()) - 1) selected++;
                 return true;
             }
         }
@@ -58,10 +67,10 @@ protected:
     {
         const Rect r = worldBounds();
 
-        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
-        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
-        for (size_t i = 0; i < std::min(items.size(), static_cast<size_t>(r.h / rowH)); ++i)
+        for (int i = 0; i < std::min(static_cast<int>(items.size()), static_cast<int>(r.h / rowH)); ++i)
         {
             const float y = r.y + static_cast<float>(i) * rowH;
             const uint32_t col = i == selected ? theme().accent : theme().btn;

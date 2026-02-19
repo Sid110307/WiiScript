@@ -9,6 +9,11 @@
 class Button : public Widget
 {
 public:
+    explicit Button(std::string text = "", std::function<void()> onClick = nullptr)
+        : text(std::move(text)), onClick(std::move(onClick))
+    {
+    }
+
     std::string text;
     std::function<void()> onClick;
     bool hovered = false, pressed = false;
@@ -53,8 +58,8 @@ protected:
         if (pressed) col = theme().btnDown;
         else if (hovered) col = theme().btnHover;
 
-        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, col, true);
-        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, col, true);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
         if (const Font* f = getFont(); f && f->isValid() && !text.empty())
             f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, theme().text);

@@ -6,6 +6,10 @@
 class Panel : public Widget
 {
 public:
+    explicit Panel(const bool drawBorder = true) : drawBorder(drawBorder)
+    {
+    }
+
     bool drawBorder = true;
 
 protected:
@@ -13,7 +17,7 @@ protected:
     {
         const Rect r = worldBounds();
 
-        roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
-        if (drawBorder) roundRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
+        if (drawBorder) roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
     }
 };

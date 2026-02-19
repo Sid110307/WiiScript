@@ -23,7 +23,7 @@ public:
     Keyboard* keyboard = nullptr;
     bool quit = false, showLeft = true, showBottom = true;
 
-    void init(Font& font);
+    void init(Font& codeFont, Font& uiFont);
     void layout(float screenW, float screenH) const;
     void update(double dt) const;
     void routeEvent(const Input::InputEvent& e);
