@@ -2,10 +2,18 @@
 
 #include <vector>
 #include <memory>
+#include <limits>
 
 #include "../theme.h"
 #include "../../platform/platform.h"
 #include "../../gfx/font.h"
+
+struct LayoutParams
+{
+    float fixedWidth = -1.0f, fixedHeight = -1.0f, flex = 0.0f, minWidth = 0.0f, minHeight = 0.0f,
+          maxWidth = std::numeric_limits<float>::infinity(), maxHeight = std::numeric_limits<float>::infinity(),
+          alignX = 0.0f, alignY = 0.0f;
+};
 
 class Widget
 {
@@ -14,10 +22,14 @@ public:
 
     Rect bounds = {};
     bool visible = true, enabled = true;
+
     Widget* parent = nullptr;
     std::vector<std::unique_ptr<Widget>> children;
     Font* font = nullptr;
+    LayoutParams layout;
+
     float radiusX = 8.0f, radiusY = 8.0f;
+    bool focusableOverride = false, focused = false;
 
     template <typename T, typename... Args>
     T* addChild(Args&&... args)
@@ -45,8 +57,8 @@ public:
     void update(const double dt)
     {
         if (!visible) return;
-        onUpdate(dt);
         for (const auto& c : children) c->update(dt);
+        onUpdate(dt);
     }
 
     void draw() const
@@ -69,14 +81,21 @@ public:
     }
 
     [[nodiscard]] Font* getFont() const { return font ? font : parent ? parent->getFont() : nullptr; }
-    [[nodiscard]] virtual bool isFocusable() const { return false; }
+    [[nodiscard]] virtual bool isFocusable() const { return focusableOverride && visible && enabled; }
+
+    void collectFocusable(std::vector<Widget*>& out)
+    {
+        if (!visible || !enabled) return;
+        if (isFocusable()) out.push_back(this);
+        for (const auto& c : children) c->collectFocusable(out);
+    }
 
 protected:
-    virtual void onUpdate(double)
+    virtual void onDraw() const
     {
     }
 
-    virtual void onDraw() const
+    virtual void onUpdate(double)
     {
     }
 };

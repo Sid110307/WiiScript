@@ -20,21 +20,38 @@ public:
 
     int selected = -1;
     bool hovered = false;
-    float rowH = 22.0f;
+    float rowH = 22.0f, viewportTopY = 0.0f, viewportH = 0.0f;
 
     bool onEvent(const Input::InputEvent& e) override
     {
+        if (!visible || !enabled) return false;
         const Rect r = worldBounds();
 
-        if (!visible || !enabled) return false;
-        if (e.type == Input::InputEvent::Type::PointerMove)
+        if (e.type == Input::InputEvent::Type::Pointer)
         {
             hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
             return false;
         }
 
+        if (e.type == Input::InputEvent::Type::PointerDown)
+        {
+            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y)) return false;
+
+            const int n = static_cast<int>(items.size());
+            if (n <= 0)
+            {
+                selected = -1;
+                return true;
+            }
+
+            selected = std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1);
+            if (selected >= 0 && selected < n && onItemSelected) onItemSelected(items[selected]);
+
+            return true;
+        }
+
         if (e.type != Input::InputEvent::Type::KeyDown) return false;
-        if (!hovered) return false;
+        if (!(focused || hovered)) return false;
 
         const int n = static_cast<int>(items.size());
         if (n <= 0)
@@ -67,9 +84,12 @@ public:
         return false;
     }
 
-    [[nodiscard]] bool isFocusable() const override { return visible && enabled; }
-
 protected:
+    void onUpdate(double) override
+    {
+        bounds.h = rowH * static_cast<float>(items.size());
+    }
+
     void onDraw() const override
     {
         const Rect r = worldBounds();
@@ -77,11 +97,19 @@ protected:
         roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panel, true);
         roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
-        for (int i = 0; i < std::min(static_cast<int>(items.size()), static_cast<int>(r.h / rowH)); ++i)
+        int first = 0, last = static_cast<int>(items.size());
+        if (viewportH > 0.0f)
+        {
+            first = std::max(0, static_cast<int>(std::floor((viewportTopY - r.y) / rowH)));
+            last = std::min(static_cast<int>(items.size()),
+                            static_cast<int>(std::ceil((viewportTopY + viewportH - r.y) / rowH)));
+        }
+
+        for (int i = first; i < last; ++i)
         {
             const float y = r.y + static_cast<float>(i) * rowH;
 
-            if (i == selected) GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().accent : theme().btn, true);
+            GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().accent : theme().btn, true);
             GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
             if (const Font* f = getFont(); f && f->isValid() && !items[i].empty())

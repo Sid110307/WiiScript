@@ -10,6 +10,9 @@
 int main()
 {
     SYS_STDIO_Report(true);
+    VIDEO_Init();
+    GRRLIB_Init();
+    GRRLIB_SetBackgroundColour(0, 0, 0, 255);
 
     if (!Input::init())
     {
@@ -32,12 +35,9 @@ int main()
         return EXIT_FAILURE;
     }
 
-    VIDEO_Init();
-    GRRLIB_Init();
-    GRRLIB_SetBackgroundColour(0, 0, 0, 255);
-
     double last = Time::seconds();
     Input::InputFrame frame = {};
+    Input::KeyRepeat keyRepeat;
     std::vector<Input::InputEvent> events;
 
     Font codeFont, uiFont;
@@ -52,14 +52,13 @@ int main()
         return EXIT_FAILURE;
     }
 
-    UIRoot ui;
-    ui.init(codeFont, uiFont);
-
+    UIRoot ui(codeFont, uiFont);
     while (true)
     {
         Input::poll(&frame, events);
         const double now = Time::seconds(), dt = now - last;
         last = now;
+        keyRepeat.generate(frame, dt, events);
 
         if (ui.quit) break;
         GRRLIB_FillScreen(theme().bg);
@@ -69,9 +68,7 @@ int main()
         ui.update(dt);
         ui.draw();
 
-        if (frame.pointer.valid) GRRLIB_Circle(frame.pointer.x, frame.pointer.y, 10, theme().accent, true);
-        else GRRLIB_Rectangle(10, 10, 10, 10, theme().accent, true);
-
+        if (frame.pointer.valid) GRRLIB_Circle(frame.pointer.x, frame.pointer.y, 3, theme().accent, true);
         GRRLIB_Render();
     }
 

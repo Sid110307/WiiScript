@@ -10,44 +10,65 @@ class Button : public Widget
 {
 public:
     explicit Button(std::string text = "", std::function<void()> onClick = nullptr)
-        : text(std::move(text)), onClick(std::move(onClick))
-    {
-    }
+        : text(std::move(text)), onClick(std::move(onClick)) { focusableOverride = true; }
 
     std::string text;
     std::function<void()> onClick;
+    const float paddingX = 12.0f, paddingY = 6.0f;
     bool hovered = false, pressed = false;
 
     bool onEvent(const Input::InputEvent& e) override
     {
-        if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
+        const Rect r = worldBounds();
+        if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::PointerUp && pressed) &&
+            !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
             return false;
-        if (e.type == Input::InputEvent::Type::PointerMove)
+
+        if (e.type == Input::InputEvent::Type::Pointer)
         {
-            hovered = e.pointer.valid && worldBounds().contains(e.pointer.x, e.pointer.y);
+            hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
+        if (e.type == Input::InputEvent::Type::PointerDown)
+        {
+            hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
             if (hovered)
             {
                 pressed = true;
                 return true;
             }
 
-        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
-            if (pressed)
-            {
-                pressed = false;
-                if (hovered && onClick) onClick();
+            return false;
+        }
 
-                return true;
-            }
+        if (e.type == Input::InputEvent::Type::PointerUp)
+        {
+            const bool wasPressed = pressed;
+            pressed = false;
+
+            hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
+            if (wasPressed && hovered && onClick) onClick();
+
+            return wasPressed;
+        }
+
+        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A && focused)
+        {
+            pressed = true;
+            return true;
+        }
+
+        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed)
+        {
+            pressed = false;
+            if (focused && onClick) onClick();
+
+            return true;
+        }
 
         return false;
     }
-
-    [[nodiscard]] bool isFocusable() const override { return visible && enabled; }
 
 protected:
     void onDraw() const override
@@ -63,5 +84,14 @@ protected:
 
         if (const Font* f = getFont(); f && f->isValid() && !text.empty())
             f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, theme().text);
+    }
+
+    void onUpdate(double) override
+    {
+        if (const Font* f = getFont(); f && f->isValid() && !text.empty())
+        {
+            if (layout.fixedWidth < 0.0f) bounds.w = f->textWidth(text) + paddingX * 2.0f;
+            if (layout.fixedHeight < 0.0f) bounds.h = f->textHeight() + paddingY * 2.0f;
+        }
     }
 };

@@ -1,6 +1,8 @@
 #include "./ui_root.h"
+#include "./widgets/layout.h"
+#include "./widgets/scrollbars.h"
 
-void UIRoot::init(Font& codeFont, Font& uiFont)
+UIRoot::UIRoot(Font& codeFont, Font& uiFont)
 {
     (void)codeFont;
     root->font = &uiFont;
@@ -9,20 +11,29 @@ void UIRoot::init(Font& codeFont, Font& uiFont)
     center = root->addChild<Panel>();
     bottom = root->addChild<Panel>();
 
-    btnRun = center->addChild<Button>("Run");
-    btnStop = center->addChild<Button>("Stop");
-    btnSave = center->addChild<Button>("Save");
+    toolbar = center->addChild<Box>(BoxDir::Horizontal);
+    toolbar->padding = 10;
+    toolbar->gap = 10;
 
-    std::vector<std::string> dummy = {"File1.txt", "File2.txt", "Folder1/", "Folder2/"};
-    fileList = left->addChild<List>(dummy);
+    btnRun = toolbar->addChild<Button>("Run");
+    btnStop = toolbar->addChild<Button>("Stop");
+    btnSave = toolbar->addChild<Button>("Save");
+
+    fileListScroll = left->addChild<ScrollView>();
+    fileList = fileListScroll->addChild<List>();
+    fileListScroll->barY = fileListScroll->addChild<ScrollBar>(BoxDir::Vertical);
+    keyboard = bottom->addChild<Keyboard>(uiFont);
+
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
         fileList->items.clear();
         for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
     }
 
-    keyboard = bottom->addChild<Keyboard>(uiFont);
-    keyboard->visible = showBottom;
+    for (int i = 1; i <= 50; ++i) fileList->items.push_back("Item " + std::to_string(i));
+
+    rebuildFocusList();
+    if (!focusableWidgets.empty()) setFocus(focusableWidgets[0]);
 }
 
 void UIRoot::layout(const float screenW, const float screenH) const
@@ -31,46 +42,83 @@ void UIRoot::layout(const float screenW, const float screenH) const
     Rect content = root->bounds;
     const float leftW = showLeft ? 200.0f : 0.0f, bottomH = showBottom ? 140.0f : 0.0f;
 
-    if (left)
-    {
-        left->visible = showLeft;
-        left->bounds = leftW > 0.0f ? content.takeLeft(leftW) : Rect::empty();
+    left->visible = showLeft;
+    left->bounds = leftW > 0.0f ? content.takeLeft(leftW) : Rect::empty();
+    fileListScroll->visible = showLeft;
+    fileListScroll->bounds = left->bounds.inset(10);
+    if (fileListScroll->barY) fileListScroll->barY->layout.fixedHeight = fileListScroll->bounds.h;
+    fileList->bounds = Rect({0, 0, fileListScroll->bounds.w, fileListScroll->bounds.h});
 
-        if (fileList) fileList->bounds = Rect({0, 0, left->bounds.w, left->bounds.h}).inset(10);
-    }
+    bottom->visible = showBottom;
+    bottom->bounds = bottomH > 0.0f ? content.takeBottom(bottomH) : Rect::empty();
+    keyboard->visible = showBottom;
+    keyboard->bounds = Rect({0, 0, bottom->bounds.w, bottom->bounds.h}).inset(10);
 
-    if (bottom)
-    {
-        bottom->visible = showBottom;
-        bottom->bounds = bottomH > 0.0f ? content.takeBottom(bottomH) : Rect::empty();
-
-        if (keyboard) keyboard->bounds = Rect({0, 0, bottom->bounds.w, bottom->bounds.h}).inset(10);
-    }
-
-    if (center)
-    {
-        center->bounds = content;
-        Rect toolbar = Rect({0, 0, center->bounds.w, center->bounds.h}).inset(10).takeTop(28);
-
-        if (btnRun) btnRun->bounds = toolbar.takeRowItem(60, 28, 10);
-        if (btnStop) btnStop->bounds = toolbar.takeRowItem(60, 28, 10);
-        if (btnSave) btnSave->bounds = toolbar.takeRowItem(60, 28, 10);
-    }
+    center->bounds = content;
+    toolbar->bounds = Rect({0, 0, center->bounds.w, toolbar->layout.fixedHeight});
 }
 
-void UIRoot::update(const double dt) const { root->update(dt); }
+void UIRoot::update(const double dt)
+{
+    rebuildFocusList();
+
+    if (focusedWidget && (!focusedWidget->visible || !focusedWidget->enabled))
+    {
+        focusedWidget = nullptr;
+        if (!focusableWidgets.empty()) setFocus(focusableWidgets[0]);
+    }
+    if (hoverWidget && (!hoverWidget->visible || !hoverWidget->enabled)) hoverWidget = nullptr;
+
+    root->update(dt);
+}
 
 void UIRoot::routeEvent(const Input::InputEvent& e)
 {
-    if (e.type == Input::InputEvent::Type::PointerMove)
+    if (e.type == Input::InputEvent::Type::Pointer)
     {
         pointer = e.pointer;
-        Widget* hit = root->hitTest(pointer.x, pointer.y);
+        if (captureWidget) captureWidget->onEvent(e);
 
-        if (hoverWidget && hoverWidget != hit) hoverWidget->onEvent(e);
-        if (hit) hit->onEvent(e);
+        Widget* prevHover = hoverWidget;
+        hoverWidget = root->hitTest(pointer.x, pointer.y);
 
-        hoverWidget = hit;
+        if (prevHover && prevHover != hoverWidget) prevHover->onEvent(e);
+        if (hoverWidget) hoverWidget->onEvent(e);
+
+        return;
+    }
+
+    if (e.type == Input::InputEvent::Type::PointerDown)
+    {
+        pointer = e.pointer;
+        captureWidget = root->hitTest(pointer.x, pointer.y);
+
+        if (captureWidget)
+        {
+            if (captureWidget->isFocusable()) setFocus(captureWidget);
+            captureWidget->onEvent(e);
+        }
+
+        return;
+    }
+
+    if (e.type == Input::InputEvent::Type::PointerUp)
+    {
+        pointer = e.pointer;
+        if (captureWidget)
+        {
+            captureWidget->onEvent(e);
+            captureWidget = nullptr;
+        }
+
+        return;
+    }
+
+    if (e.type == Input::InputEvent::Type::Scroll)
+    {
+        for (Widget* w = hoverWidget; w; w = w->parent) if (w->onEvent(e)) return;
+        for (Widget* w = focusedWidget; w; w = w->parent) if (w->onEvent(e)) return;
+
         return;
     }
 
@@ -82,27 +130,48 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
             return;
         }
 
-        if (e.key == Input::Key::Plus) return;
-        if (e.key == Input::Key::Minus) return;
-
         if (e.key == Input::Key::One)
         {
             showLeft = !showLeft;
             return;
         }
+
         if (e.key == Input::Key::Two)
         {
             showBottom = !showBottom;
             return;
         }
 
+        if (e.key == Input::Key::Up || e.key == Input::Key::Down || e.key == Input::Key::Left ||
+            e.key == Input::Key::Right)
+        {
+            if (focusedWidget)
+            {
+                Input::InputEvent nav = e;
+                nav.pointer = pointer;
+
+                if (focusedWidget->onEvent(nav)) return;
+            }
+
+            Widget* next = findNextFocusable(e.key == Input::Key::Left ? -1 : e.key == Input::Key::Right ? 1 : 0,
+                                             e.key == Input::Key::Up ? -1 : e.key == Input::Key::Down ? 1 : 0);
+            if (next) setFocus(next);
+
+            return;
+        }
+
         if (e.key == Input::Key::A)
         {
-            Input::InputEvent event = e;
-            event.pointer = pointer;
+            Input::InputEvent pe = e;
+            pe.pointer = pointer;
+            pe.type = Input::InputEvent::Type::PointerDown;
 
-            capture = root->hitTest(pointer.x, pointer.y);
-            if (capture) capture->onEvent(event);
+            captureWidget = root->hitTest(pointer.x, pointer.y);
+            if (captureWidget)
+            {
+                if (captureWidget->isFocusable()) setFocus(captureWidget);
+                captureWidget->onEvent(pe);
+            }
 
             return;
         }
@@ -110,17 +179,85 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
 
     if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
     {
-        Input::InputEvent event = e;
-        event.pointer = pointer;
-
-        if (capture)
+        if (captureWidget)
         {
-            capture->onEvent(event);
-            capture = nullptr;
+            Input::InputEvent pe = e;
+            pe.pointer = pointer;
+            pe.type = Input::InputEvent::Type::PointerUp;
 
-            return;
+            captureWidget->onEvent(pe);
+            captureWidget = nullptr;
         }
+        return;
+    }
+
+    if (e.type == Input::InputEvent::Type::KeyDown || e.type == Input::InputEvent::Type::KeyUp)
+    {
+        Input::InputEvent ke = e;
+        ke.pointer = pointer;
+
+        if (captureWidget && captureWidget->onEvent(ke)) return;
+        if (focusedWidget && focusedWidget->onEvent(ke)) return;
+        if (hoverWidget) hoverWidget->onEvent(ke);
     }
 }
 
 void UIRoot::draw() const { root->draw(); }
+
+void UIRoot::setFocus(Widget* w)
+{
+    if (!w || !w->isFocusable()) return;
+    if (focusedWidget == w) return;
+    if (focusedWidget) focusedWidget->focused = false;
+
+    focusedWidget = w;
+    focusedWidget->focused = true;
+}
+
+void UIRoot::rebuildFocusList()
+{
+    focusableWidgets.clear();
+    root->collectFocusable(focusableWidgets);
+}
+
+Widget* UIRoot::findNextFocusable(const int dirX, const int dirY) const
+{
+    if (focusableWidgets.empty()) return nullptr;
+    if (!focusedWidget) return focusableWidgets[0];
+
+    Widget* best = nullptr;
+    float bestDist = std::numeric_limits<float>::max();
+
+    const Rect from = focusedWidget->worldBounds();
+    const float fromCx = from.x + from.w / 2.0f, fromCy = from.y + from.h / 2.0f;
+
+    for (Widget* w : focusableWidgets)
+    {
+        if (w == focusedWidget) continue;
+
+        const Rect to = w->worldBounds();
+        const float dx = to.x + to.w / 2.0f - fromCx, dy = to.y + to.h / 2.0f - fromCy;
+
+        if (dx >= 0) continue;
+        if (dirX > 0 && dx <= 0) continue;
+        if (dy >= 0) continue;
+        if (dirY > 0 && dy <= 0) continue;
+
+        if (const float dist = dx * dx + dy * dy; dist < bestDist) bestDist = dist, best = w;
+    }
+
+    if (!best)
+        if (const auto it = std::find(focusableWidgets.begin(), focusableWidgets.end(), focusedWidget); it !=
+            focusableWidgets.end())
+        {
+            int i = it - focusableWidgets.begin();
+            int step = dirX + dirY;
+            if (step == 0) step = 1;
+
+            i = (i + step) % static_cast<int>(focusableWidgets.size());
+            if (i < 0) i += static_cast<int>(focusableWidgets.size());
+
+            best = focusableWidgets[i];
+        }
+    return best ? best : focusedWidget;
+}

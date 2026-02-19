@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include <cstdint>
+#include <array>
 
 namespace Input
 {
@@ -38,17 +38,16 @@ namespace Input
     {
         enum class Type : uint8_t
         {
-            PointerMove,
+            Pointer,
             PointerDown,
             PointerUp,
             Scroll,
             KeyDown,
             KeyUp,
-            TextChar,
-        } type = Type::PointerMove;
+        } type = Type::Pointer;
 
         PointerState pointer = {};
-        int scrollLines = 0;
+        int scrollX = 0, scrollY = 0;
         Key key = Key::None;
         uint32_t keyMods = 0, ch = 0;
     };
@@ -59,8 +58,24 @@ namespace Input
         uint32_t wpadDown = 0, wpadHeld = 0, wpadUp = 0;
     };
 
+    class KeyRepeat
+    {
+    public:
+        void generate(const InputFrame& frame, double dt, std::vector<InputEvent>& outEvents);
+
+    private:
+        struct State
+        {
+            double heldTime = 0.0f, nextTime = 0.0f;
+            bool wasHeld = false;
+        };
+
+        std::array<State, static_cast<size_t>(Key::StickDown) + 1> keyStates = {};
+        void repeatKey(double dt, std::vector<InputEvent>& outEvents, Key key, bool held);
+    };
+
     bool init();
-    void poll(InputFrame * outFrame, std::vector<InputEvent> & outEvents);
+    void poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents);
 }
 
 namespace Time
