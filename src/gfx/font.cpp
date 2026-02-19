@@ -1,6 +1,8 @@
 #include "./font.h"
 #include "../platform/platform.h"
 
+#include <cmath>
+
 bool Font::load(const std::string& path, const int size)
 {
     data.clear();
@@ -17,7 +19,8 @@ bool Font::load(const std::string& path, const int size)
 void Font::drawText(const std::string& text, const float x, const float y, const uint32_t color) const
 {
     if (!font) return;
-    GRRLIB_PrintfTTF(static_cast<int>(x), static_cast<int>(y), font.get(), text.c_str(), fontSize, color);
+    GRRLIB_PrintfTTF(static_cast<int>(std::round(x)), static_cast<int>(std::round(y)), font.get(), text.c_str(),
+                     fontSize, color);
 }
 
 float Font::textWidth(const std::string& text) const

@@ -5,13 +5,20 @@
 struct Rect
 {
     float x = 0, y = 0, w = 0, h = 0;
+    static Rect empty() { return {0, 0, 0, 0}; }
+
+    bool operator==(const Rect& other) const
+    {
+        return x == other.x && y == other.y && w == other.w && h == other.h;
+    }
+
+    bool operator!=(const Rect& other) const { return !(*this == other); }
 
     [[nodiscard]] bool contains(const float px, const float py) const
     {
         return px >= x && py >= y && px < x + w && py < y + h;
     }
 
-    static Rect empty() { return {0, 0, 0, 0}; }
     [[nodiscard]] Rect inset(const float all) const { return {x + all, y + all, w - 2 * all, h - 2 * all}; }
 
     [[nodiscard]] Rect inset(const float l, const float t, const float r, const float b) const

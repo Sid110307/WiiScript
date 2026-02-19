@@ -1,24 +1,31 @@
 #include "./keyCollection.h"
 
-void KeyCollection::resetState()
-{
-    shift = false;
-    caps = false;
-}
-
 KeyCollection::KeyCollection()
 {
     keys.clear();
-    for (const auto& k : keyboardKeys)
-        keys.push_back({.x = k.x, .y = k.y, .w = k.w, .h = k.h, .val = k.val, .shiftVal = k.shiftVal});
+    keys.reserve(keyboardLayoutKeys());
+
+    for (size_t row = 0; row < keyboardLayoutRows; ++row)
+    {
+        const RowSpec& r = keyboardLayout[row];
+
+        float x = r.xOffset * (unitWidth + unitGap);
+        const float y = static_cast<float>(row) * (unitHeight + unitGap);
+
+        for (size_t i = 0; i < r.count; ++i)
+        {
+            KeyboardKey k = r.keys[i];
+            k.x = x;
+            k.y = y;
+            k.h = unitHeight;
+            k.w = k.unit * unitWidth + (k.unit - 1.0f) * unitGap;
+
+            keys.push_back(k);
+            x += k.w + unitGap;
+        }
+    }
 }
 
-KeyboardKey KeyCollection::getSelected(const float x, const float y) const
-{
-    for (const auto& k : keys) if (x > k.x && x < k.x + k.w && y > k.y && y < k.y + k.h) return k;
-    return {};
-}
-
-std::size_t KeyCollection::keyCount() const { return keys.size(); }
-const KeyboardKey& KeyCollection::keyAt(const std::size_t i) const { return keys.at(i); }
+size_t KeyCollection::keyCount() const { return keys.size(); }
+const KeyboardKey& KeyCollection::keyAt(const size_t i) const { return keys.at(i); }
 const std::vector<KeyboardKey>& KeyCollection::getKeys() const { return keys; }

@@ -9,8 +9,8 @@
 class KeyButton : public Button
 {
 public:
-    KeyButton(KeyCollection& keys, Font& font, const KeyboardKey& key);
-    [[nodiscard]] const KeyboardKey& getKey() const;
+    KeyButton(KeyCollection& keys, Font& font, size_t keyIndex);
+    [[nodiscard]] size_t index() const;
 
 protected:
     void onDraw() const override;
@@ -18,7 +18,7 @@ protected:
 private:
     KeyCollection* keys = nullptr;
     Font* font = nullptr;
-    KeyboardKey key = {};
+    size_t keyIndex = 0;
 };
 
 class Keyboard : public Widget
@@ -31,11 +31,15 @@ public:
 
 protected:
     void onDraw() const override;
+    void onUpdate(double) override;
 
 private:
-    void activateKey(const std::string& keyText);
+    void layoutKeys() const;
+    void activateKey(const char* keyText, KeyAction action);
 
     KeyCollection keys;
+    std::vector<KeyButton*> keyButtons;
     Font* font = nullptr;
     std::string textValue;
+    Rect lastBounds = Rect::empty();
 };
