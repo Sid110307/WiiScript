@@ -1,6 +1,7 @@
 #include "./keyboard.h"
 
 #include <cfloat>
+#include <cctype>
 
 static Rect computeBounds(const std::vector<KeyboardKey>& keys)
 {

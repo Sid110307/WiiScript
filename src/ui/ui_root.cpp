@@ -1,6 +1,4 @@
 #include "./ui_root.h"
-#include "./widgets/layout.h"
-#include "./widgets/scrollbars.h"
 
 UIRoot::UIRoot(Font& codeFont, Font& uiFont)
 {
@@ -9,14 +7,6 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
     left = root->addChild<Panel>();
     center = root->addChild<Panel>();
     bottom = root->addChild<Panel>();
-
-    toolbar = center->addChild<Box>(BoxDir::Horizontal);
-    toolbar->padding = 10;
-    toolbar->gap = 10;
-
-    btnRun = toolbar->addChild<Button>("Run");
-    btnStop = toolbar->addChild<Button>("Stop");
-    btnSave = toolbar->addChild<Button>("Save");
 
     editorScroll = center->addChild<ScrollView>();
     editor = editorScroll->addChild<TextInput>(codeFont);
@@ -39,12 +29,11 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
         for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
     }
 
-    for (int i = 1; i <= 150; ++i)
-        fileList->items.push_back(
-            "Lorem ipsum dolor sit amet something " + std::to_string(i));
+    for (int i = 1; i <= 150; ++i) fileList->items.push_back("File " + std::to_string(i));
 
     rebuildFocusList();
-    if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
+    if (editor && editor->isFocusable()) setFocus(editor, false);
+    else if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
 }
 
 void UIRoot::layout(const float screenW, const float screenH) const
@@ -65,12 +54,7 @@ void UIRoot::layout(const float screenW, const float screenH) const
     keyboard->bounds = Rect({0, 0, bottom->bounds.w, bottom->bounds.h}).inset(10);
 
     center->bounds = content;
-    toolbar->bounds = Rect({0, 0, center->bounds.w, toolbar->layout.fixedHeight});
-
-    auto centerContent = Rect({0, 0, center->bounds.w, center->bounds.h});
-    centerContent.takeTop(toolbar->layout.fixedHeight);
-
-    editorScroll->bounds = centerContent.inset(10);
+    editorScroll->bounds = Rect({0, 0, center->bounds.w, center->bounds.h}).inset(10);
     if (editorScroll->barY) editorScroll->barY->layout.fixedHeight = editorScroll->bounds.h;
     editor->bounds.w = editorScroll->bounds.w;
 }
@@ -84,7 +68,9 @@ void UIRoot::update(const double dt)
         focusedWidget->focused = false;
         focusedWidget->showFocus = false;
         focusedWidget = nullptr;
-        if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
+
+        if (editor && editor->isFocusable()) setFocus(editor, false);
+        else if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
     }
     if (hoverWidget && (!hoverWidget->visible || !hoverWidget->enabled)) hoverWidget = nullptr;
 
@@ -122,91 +108,88 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
         return;
     }
 
-    if (e.type == Input::InputEvent::Type::KeyDown)
-    {
-        if (e.key == Input::Key::Home)
-        {
-            quit = true;
-            return;
-        }
-
-        if (e.key == Input::Key::One)
-        {
-            showLeft = !showLeft;
-            return;
-        }
-
-        if (e.key == Input::Key::Two)
-        {
-            showBottom = !showBottom;
-            return;
-        }
-
-        if (e.key == Input::Key::Up || e.key == Input::Key::Down || e.key == Input::Key::Left ||
-            e.key == Input::Key::Right)
-        {
-            if (focusedWidget)
-            {
-                Input::InputEvent nav = e;
-                nav.pointer = pointer;
-
-                if (focusedWidget->onEvent(nav)) return;
-            }
-
-            Widget* next = findNextFocusable(e.key == Input::Key::Left ? -1 : e.key == Input::Key::Right ? 1 : 0,
-                                             e.key == Input::Key::Up ? -1 : e.key == Input::Key::Down ? 1 : 0);
-            if (next) setFocus(next, true);
-
-            return;
-        }
-
-        if (e.key == Input::Key::A)
-        {
-            Input::InputEvent ke = e;
-            ke.pointer = pointer;
-
-            if (pointer.valid)
-            {
-                captureWidget = root->hitTest(pointer.x, pointer.y);
-                if (captureWidget)
-                {
-                    if (captureWidget->isFocusable()) setFocus(captureWidget, false);
-                    captureWidget->onEvent(ke);
-
-                    return;
-                }
-            }
-
-            if (focusedWidget && focusedWidget->onEvent(ke)) return;
-            return;
-        }
-    }
-
-    if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
-    {
-        Input::InputEvent ke = e;
-        ke.pointer = pointer;
-
-        if (captureWidget)
-        {
-            captureWidget->onEvent(ke);
-            captureWidget = nullptr;
-
-            return;
-        }
-
-        if (focusedWidget && focusedWidget->onEvent(ke)) return;
-        return;
-    }
-
     if (e.type == Input::InputEvent::Type::KeyDown || e.type == Input::InputEvent::Type::KeyUp)
     {
         Input::InputEvent ke = e;
         ke.pointer = pointer;
 
+        if (e.key == Input::Key::A)
+        {
+            if (e.type == Input::InputEvent::Type::KeyDown)
+            {
+                if (!pointer.valid) return;
+                captureWidget = root->hitTest(pointer.x, pointer.y);
+                if (!captureWidget) return;
+
+                bool clickedKeyboard = false;
+                for (const Widget* p = captureWidget; p; p = p->parent)
+                    if (p == keyboard)
+                    {
+                        clickedKeyboard = true;
+                        break;
+                    }
+
+                if (captureWidget->isFocusable() && !clickedKeyboard) setFocus(captureWidget, false);
+                captureWidget->onEvent(ke);
+
+                return;
+            }
+
+            if (captureWidget)
+            {
+                captureWidget->onEvent(ke);
+                captureWidget = nullptr;
+            }
+        }
+
         if (captureWidget && captureWidget->onEvent(ke)) return;
         if (focusedWidget && focusedWidget->onEvent(ke)) return;
-        if (hoverWidget) hoverWidget->onEvent(ke);
+        if (hoverWidget && hoverWidget->onEvent(ke)) return;
+
+        if (e.type == Input::InputEvent::Type::KeyDown)
+        {
+            if (e.key == Input::Key::Home)
+            {
+                quit = true;
+                return;
+            }
+
+            if (e.key == Input::Key::One)
+            {
+                if (showLeft && showBottom)
+                {
+                    showLeft = true;
+                    showBottom = false;
+                }
+                else if (showLeft && !showBottom)
+                {
+                    showLeft = false;
+                    showBottom = true;
+                }
+                else if (!showLeft && showBottom)
+                {
+                    showLeft = false;
+                    showBottom = false;
+                }
+                else
+                {
+                    showLeft = true;
+                    showBottom = true;
+                }
+
+                return;
+            }
+
+            if (e.key == Input::Key::Up || e.key == Input::Key::Down || e.key == Input::Key::Left ||
+                e.key == Input::Key::Right)
+            {
+                if (focusedWidget == editor) return;
+
+                Widget* next = findNextFocusable(e.key == Input::Key::Left ? -1 : e.key == Input::Key::Right ? 1 : 0,
+                                                 e.key == Input::Key::Up ? -1 : e.key == Input::Key::Down ? 1 : 0);
+                if (next) setFocus(next, true);
+            }
+        }
     }
 }
 

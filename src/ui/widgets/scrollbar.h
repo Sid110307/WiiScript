@@ -169,6 +169,8 @@ protected:
     void onUpdate(double) override
     {
         Rect view = Rect({0, 0, bounds.w, bounds.h}).inset(padding), barRectY = Rect::empty(), barRectX = Rect::empty();
+        const float contentW = content ? std::max(view.w, content->bounds.w) : 0.0f;
+
         if (!content)
         {
             scrollX = scrollY = 0.0f;
@@ -178,23 +180,24 @@ protected:
             return;
         }
 
-        content->bounds.w = std::max(content->bounds.w, view.w);
-        if (const auto* list = dynamic_cast<List*>(content)) content->bounds.h = list->contentHeight();
-        if (const auto* textInput = dynamic_cast<TextInput*>(content))
-            content->bounds.h = static_cast<float>(textInput->buffer().getLines().size()) * textInput->font->
-                textHeight() + textInput->emptyArea;
+        float contentH = std::max(view.h, content->bounds.h);
+        if (const auto* list = dynamic_cast<List*>(content)) contentH = list->contentHeight();
+        if (const auto* textInput = dynamic_cast<TextInput*>(content)) contentH = textInput->getSize();
 
-        const bool needBarX = barX && content->bounds.w > view.w, needBarY = barY && content->bounds.h > view.h;
+        bool needBarX = barX && contentW > view.w, needBarY = barY && contentH > view.h;
+
         if (needBarX) barRectX = view.takeBottom(barWidth);
         if (needBarY) barRectY = view.takeRight(barWidth);
+        needBarX = barX && contentW > view.w;
+        needBarY = barY && contentH > view.h;
 
-        content->bounds = Rect({view.x - scrollX, view.y - scrollY, view.w, view.h});
+        content->bounds = Rect({view.x - scrollX, view.y - scrollY, contentW, contentH});
         if (barX)
         {
             barX->scroll = &scrollX;
             barX->viewSize = view.w;
             barX->visible = needBarX;
-            barX->contentSize = content->bounds.w;
+            barX->contentSize = contentW;
             barX->bounds = barRectX;
             if (needBarY) barX->bounds.w -= barWidth;
         }
@@ -203,7 +206,7 @@ protected:
             barY->scroll = &scrollY;
             barY->viewSize = view.h;
             barY->visible = needBarY;
-            barY->contentSize = content->bounds.h;
+            barY->contentSize = contentH;
             barY->bounds = barRectY;
             if (needBarX) barY->bounds.h -= barWidth;
         }

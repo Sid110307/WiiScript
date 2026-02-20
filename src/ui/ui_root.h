@@ -7,11 +7,9 @@
 
 #include "./widgets/widget.h"
 #include "./widgets/panel.h"
-#include "./widgets/button.h"
 #include "./widgets/list.h"
 #include "./widgets/text_input.h"
-#include "./widgets/scrollbars.h"
-#include "./widgets/layout.h"
+#include "./widgets/scrollbar.h"
 
 class UIRoot
 {
@@ -27,10 +25,8 @@ public:
 
     std::unique_ptr<Panel> root = std::make_unique<Panel>();
     Widget *captureWidget = nullptr, *hoverWidget = nullptr, *focusedWidget = nullptr;
-    Box* toolbar = nullptr;
     Panel *left = nullptr, *center = nullptr, *bottom = nullptr;
 
-    Button *btnRun = nullptr, *btnStop = nullptr, *btnSave = nullptr;
     List* fileList = nullptr;
     ScrollView *fileListScroll = nullptr, *editorScroll = nullptr;
     TextInput* editor = nullptr;

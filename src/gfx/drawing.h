@@ -8,6 +8,78 @@
 constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = ANGLES + 4;
 static_assert(90 % STEP_DEG == 0, "STEP_DEG must divide 90 evenly");
 
+struct Rect
+{
+    float x = 0, y = 0, w = 0, h = 0;
+    static Rect empty() { return {0, 0, 0, 0}; }
+
+    bool operator==(const Rect& other) const
+    {
+        return x == other.x && y == other.y && w == other.w && h == other.h;
+    }
+
+    bool operator!=(const Rect& other) const { return !(*this == other); }
+
+    [[nodiscard]] bool contains(const float px, const float py) const
+    {
+        return px >= x && py >= y && px < x + w && py < y + h;
+    }
+
+    [[nodiscard]] Rect inset(const float all) const { return {x + all, y + all, w - 2 * all, h - 2 * all}; }
+
+    [[nodiscard]] Rect inset(const float l, const float t, const float r, const float b) const
+    {
+        return {x + l, y + t, w - (l + r), h - (t + b)};
+    }
+
+    Rect takeLeft(const float width)
+    {
+        const float ww = width < 0 ? 0 : width > w ? w : width;
+        const Rect out = {x, y, ww, h};
+        x += ww;
+        w -= ww;
+
+        return out;
+    }
+
+    Rect takeRight(const float width)
+    {
+        const float ww = width < 0 ? 0 : width > w ? w : width;
+        const Rect out = {x + w - ww, y, ww, h};
+        w -= ww;
+
+        return out;
+    }
+
+    Rect takeTop(const float height)
+    {
+        const float hh = height < 0 ? 0 : height > h ? h : height;
+        const Rect out = {x, y, w, hh};
+        y += hh;
+        h -= hh;
+
+        return out;
+    }
+
+    Rect takeBottom(const float height)
+    {
+        const float hh = height < 0 ? 0 : height > h ? h : height;
+        const Rect out = {x, y + h - hh, w, hh};
+        h -= hh;
+
+        return out;
+    }
+
+    Rect takeRowItem(const float width, const float height, const float gap = 0.0f)
+    {
+        const Rect out = {x, y, width, height};
+        x += width + gap;
+        w -= width + gap;
+
+        return out;
+    }
+};
+
 struct TrigLUT
 {
     std::array<float, ANGLES> c = {}, s = {};
