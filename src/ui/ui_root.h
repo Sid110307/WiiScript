@@ -35,7 +35,7 @@ public:
     Keyboard* keyboard = nullptr;
 
 private:
-    void setFocus(Widget* w);
+    void setFocus(Widget* w, bool show);
     void rebuildFocusList();
     [[nodiscard]] Widget* findNextFocusable(int dirX, int dirY) const;
 

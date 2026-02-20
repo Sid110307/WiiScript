@@ -12,7 +12,7 @@ class ScrollBar : public Widget
 public:
     const float minThumb = 18.0f;
     BoxDir dir = BoxDir::Horizontal;
-    float contentSize = 0.0f, viewSize = 0.0f, dragGrab = 0.0f, *scroll = nullptr;
+    float contentSize = 0.0f, viewSize = 0.0f, dragGrab = 0.0f, scrollAmount = 0.0f, *scroll = nullptr;
     bool hovered = false, dragging = false;
 
     explicit ScrollBar(const BoxDir d) : dir(d) { focusableOverride = true; }
@@ -25,8 +25,16 @@ public:
         if (e.type == Input::InputEvent::Type::Pointer)
         {
             hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
+
             if (dragging)
             {
+                // If pointer lost, stop dragging to avoid "stuck" drag
+                if (!e.pointer.valid)
+                {
+                    dragging = false;
+                    return true;
+                }
+
                 const Rect thumb = thumbRect(r);
 
                 if (dir == BoxDir::Vertical)
@@ -54,41 +62,55 @@ public:
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::PointerDown)
+        // IR "click": A down acts like pointer down, but we only have KeyDown/KeyUp
+        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
         {
-            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y)) return false;
+            // Only treat as IR click if pointer is valid and inside scrollbar
+            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y))
+            {
+                // But still allow focused controller usage (press A does nothing for scrollbar)
+                return false;
+            }
 
             const Rect thumb = thumbRect(r);
+
+            // Start drag if clicking the thumb
             if (thumb.contains(e.pointer.x, e.pointer.y))
             {
                 dragging = true;
-                dragGrab = dir == BoxDir::Vertical ? e.pointer.y - thumb.y : e.pointer.x - thumb.x;
-
-                return true;
+                dragGrab = dir == BoxDir::Vertical ? (e.pointer.y - thumb.y) : (e.pointer.x - thumb.x);
+                return true; // capture this widget in UIRoot
             }
 
+            // Otherwise page up/down (click track)
             *scroll = dir == BoxDir::Vertical
                           ? std::clamp(*scroll + (e.pointer.y < thumb.y ? -viewSize : viewSize), 0.0f, maxScroll())
                           : std::clamp(*scroll + (e.pointer.x < thumb.x ? -viewSize : viewSize), 0.0f, maxScroll());
-            return true;
+            return true; // capture (optional, but consistent)
         }
 
-        if (e.type == Input::InputEvent::Type::PointerUp && dragging)
+        // Release drag on A up
+        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
         {
-            dragging = false;
-            return true;
+            if (dragging)
+            {
+                dragging = false;
+                return true;
+            }
+            return false;
         }
 
+        // Controller scroll when focused
         if (e.type == Input::InputEvent::Type::KeyDown && focused)
         {
             if (e.key == Input::Key::Up)
             {
-                *scroll = std::max(0.0f, *scroll - 22.0f);
+                *scroll = std::max(0.0f, *scroll - scrollAmount);
                 return true;
             }
             if (e.key == Input::Key::Down)
             {
-                *scroll = std::min(maxScroll(), *scroll + 22.0f);
+                *scroll = std::min(maxScroll(), *scroll + scrollAmount);
                 return true;
             }
         }
@@ -131,7 +153,7 @@ class ScrollView : public Widget
 public:
     Widget* content = nullptr;
     ScrollBar *barX = nullptr, *barY = nullptr;
-    float scrollX = 0.0f, scrollY = 0.0f, padding = 0.0f, barWidth = 12.0f, scrollAmount = 22.0f;
+    float scrollX = 0.0f, scrollY = 0.0f, padding = 0.0f, barWidth = 12.0f, defaultScrollAmount = 20.0f;
 
     ScrollView() { focusableOverride = true; }
 
@@ -150,8 +172,6 @@ protected:
         {
             content->bounds.x = view.x - scrollX;
             content->bounds.y = view.y - scrollY;
-            content->bounds.w = needBarY ? view.w : content->bounds.w;
-            content->bounds.h = needBarX ? view.h : content->bounds.h;
         }
 
         if (barX)
@@ -171,6 +191,12 @@ protected:
             barY->visible = needBarY;
             barY->bounds = barRectY;
             if (needBarX) barY->bounds.h -= barWidth;
+        }
+
+        if (auto* list = dynamic_cast<List*>(content))
+        {
+            list->bounds.w = std::max(0.0f, view.w - (needBarY ? barWidth : 0.0f));
+            list->bounds.h = std::max(0.0f, view.h - (needBarX ? barWidth : 0.0f));
         }
 
         clampScroll();
@@ -231,14 +257,28 @@ protected:
         {
             if (e.key == Input::Key::Up)
             {
-                scrollY -= scrollAmount;
+                scrollY -= barY ? barY->scrollAmount : defaultScrollAmount;
                 clampScroll();
 
                 return true;
             }
             if (e.key == Input::Key::Down)
             {
-                scrollY += scrollAmount;
+                scrollY += barY ? barY->scrollAmount : defaultScrollAmount;
+                clampScroll();
+
+                return true;
+            }
+            if (e.key == Input::Key::Left)
+            {
+                scrollX -= barX ? barX->scrollAmount : defaultScrollAmount;
+                clampScroll();
+
+                return true;
+            }
+            if (e.key == Input::Key::Right)
+            {
+                scrollX += barX ? barX->scrollAmount : defaultScrollAmount;
                 clampScroll();
 
                 return true;
@@ -247,8 +287,8 @@ protected:
 
         if (e.type == Input::InputEvent::Type::Scroll)
         {
-            scrollX += static_cast<float>(e.scrollX) * scrollAmount;
-            scrollY += static_cast<float>(e.scrollY) * scrollAmount;
+            scrollX += static_cast<float>(e.scrollX) * (barX ? barX->scrollAmount : defaultScrollAmount);
+            scrollY += static_cast<float>(e.scrollY) * (barY ? barY->scrollAmount : defaultScrollAmount);
             clampScroll();
 
             return true;

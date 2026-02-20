@@ -22,18 +22,19 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
     fileListScroll = left->addChild<ScrollView>();
     fileList = fileListScroll->addChild<List>();
     fileListScroll->barY = fileListScroll->addChild<ScrollBar>(BoxDir::Vertical);
-    keyboard = bottom->addChild<Keyboard>(uiFont);
+    fileListScroll->barY->scrollAmount = fileList->rowH;
 
+    keyboard = bottom->addChild<Keyboard>(uiFont);
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
         fileList->items.clear();
         for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
     }
 
-    for (int i = 1; i <= 50; ++i) fileList->items.push_back("Item " + std::to_string(i));
+    for (int i = 1; i <= 150; ++i) fileList->items.push_back("Item " + std::to_string(i));
 
     rebuildFocusList();
-    if (!focusableWidgets.empty()) setFocus(focusableWidgets[0]);
+    if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
 }
 
 void UIRoot::layout(const float screenW, const float screenH) const
@@ -64,8 +65,10 @@ void UIRoot::update(const double dt)
 
     if (focusedWidget && (!focusedWidget->visible || !focusedWidget->enabled))
     {
+        focusedWidget->focused = false;
+        focusedWidget->showFocus = false;
         focusedWidget = nullptr;
-        if (!focusableWidgets.empty()) setFocus(focusableWidgets[0]);
+        if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
     }
     if (hoverWidget && (!hoverWidget->visible || !hoverWidget->enabled)) hoverWidget = nullptr;
 
@@ -84,32 +87,7 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
 
         if (prevHover && prevHover != hoverWidget) prevHover->onEvent(e);
         if (hoverWidget) hoverWidget->onEvent(e);
-
-        return;
-    }
-
-    if (e.type == Input::InputEvent::Type::PointerDown)
-    {
-        pointer = e.pointer;
-        captureWidget = root->hitTest(pointer.x, pointer.y);
-
-        if (captureWidget)
-        {
-            if (captureWidget->isFocusable()) setFocus(captureWidget);
-            captureWidget->onEvent(e);
-        }
-
-        return;
-    }
-
-    if (e.type == Input::InputEvent::Type::PointerUp)
-    {
-        pointer = e.pointer;
-        if (captureWidget)
-        {
-            captureWidget->onEvent(e);
-            captureWidget = nullptr;
-        }
+        if (focusedWidget) focusedWidget->showFocus = false;
 
         return;
     }
@@ -155,39 +133,47 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
 
             Widget* next = findNextFocusable(e.key == Input::Key::Left ? -1 : e.key == Input::Key::Right ? 1 : 0,
                                              e.key == Input::Key::Up ? -1 : e.key == Input::Key::Down ? 1 : 0);
-            if (next) setFocus(next);
+            if (next) setFocus(next, true);
 
             return;
         }
 
         if (e.key == Input::Key::A)
         {
-            Input::InputEvent pe = e;
-            pe.pointer = pointer;
-            pe.type = Input::InputEvent::Type::PointerDown;
+            Input::InputEvent ke = e;
+            ke.pointer = pointer;
 
-            captureWidget = root->hitTest(pointer.x, pointer.y);
-            if (captureWidget)
+            if (pointer.valid)
             {
-                if (captureWidget->isFocusable()) setFocus(captureWidget);
-                captureWidget->onEvent(pe);
+                captureWidget = root->hitTest(pointer.x, pointer.y);
+                if (captureWidget)
+                {
+                    if (captureWidget->isFocusable()) setFocus(captureWidget, false);
+                    captureWidget->onEvent(ke);
+
+                    return;
+                }
             }
 
+            if (focusedWidget && focusedWidget->onEvent(ke)) return;
             return;
         }
     }
 
     if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
     {
+        Input::InputEvent ke = e;
+        ke.pointer = pointer;
+
         if (captureWidget)
         {
-            Input::InputEvent pe = e;
-            pe.pointer = pointer;
-            pe.type = Input::InputEvent::Type::PointerUp;
-
-            captureWidget->onEvent(pe);
+            captureWidget->onEvent(ke);
             captureWidget = nullptr;
+
+            return;
         }
+
+        if (focusedWidget && focusedWidget->onEvent(ke)) return;
         return;
     }
 
@@ -204,14 +190,23 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
 
 void UIRoot::draw() const { root->draw(); }
 
-void UIRoot::setFocus(Widget* w)
+void UIRoot::setFocus(Widget* w, const bool show)
 {
     if (!w || !w->isFocusable()) return;
-    if (focusedWidget == w) return;
-    if (focusedWidget) focusedWidget->focused = false;
+    if (focusedWidget && focusedWidget == w)
+    {
+        focusedWidget->showFocus = show;
+        return;
+    }
+    if (focusedWidget)
+    {
+        focusedWidget->focused = false;
+        focusedWidget->showFocus = false;
+    }
 
     focusedWidget = w;
     focusedWidget->focused = true;
+    focusedWidget->showFocus = show;
 }
 
 void UIRoot::rebuildFocusList()
@@ -225,39 +220,54 @@ Widget* UIRoot::findNextFocusable(const int dirX, const int dirY) const
     if (focusableWidgets.empty()) return nullptr;
     if (!focusedWidget) return focusableWidgets[0];
 
-    Widget* best = nullptr;
-    float bestDist = std::numeric_limits<float>::max();
+    const int dxDir = dirX, dyDir = dirY;
+    if (dxDir == 0 && dyDir == 0) return focusedWidget;
 
     const Rect from = focusedWidget->worldBounds();
-    const float fromCx = from.x + from.w / 2.0f, fromCy = from.y + from.h / 2.0f;
+    Widget* best = nullptr;
+    float bestScore = std::numeric_limits<float>::infinity();
 
     for (Widget* w : focusableWidgets)
     {
-        if (w == focusedWidget) continue;
+        if (!w || w == focusedWidget) continue;
 
         const Rect to = w->worldBounds();
-        const float dx = to.x + to.w / 2.0f - fromCx, dy = to.y + to.h / 2.0f - fromCy;
+        const float dx = to.x + to.w * 0.5f - (from.x + from.w * 0.5f),
+                    dy = to.y + to.h * 0.5f - (from.y + from.h * 0.5f);
+        if ((dxDir > 0 && dx <= 0) || (dxDir < 0 && dx >= 0) || (dyDir > 0 && dy <= 0) || (dyDir < 0 && dy >= 0))
+            continue;
 
-        if (dx >= 0) continue;
-        if (dirX > 0 && dx <= 0) continue;
-        if (dy >= 0) continue;
-        if (dirY > 0 && dy <= 0) continue;
+        float forward = 0.0f, lateral = 0.0f;
+        if (dxDir != 0)
+        {
+            forward = dxDir > 0 ? to.x - (from.x + from.w) : from.x - (to.x + to.w);
+            lateral = std::abs(dy);
+        }
+        else
+        {
+            forward = dyDir > 0 ? to.y - (from.y + from.h) : from.y - (to.y + to.h);
+            lateral = std::abs(dx);
+        }
 
-        if (const float dist = dx * dx + dy * dy; dist < bestDist) bestDist = dist, best = w;
+        if (forward <= 0.0f) continue;
+        if (const float score = forward + lateral * 0.35f; score < bestScore)
+        {
+            bestScore = score;
+            best = w;
+        }
     }
 
-    if (!best)
-        if (const auto it = std::find(focusableWidgets.begin(), focusableWidgets.end(), focusedWidget); it !=
-            focusableWidgets.end())
-        {
-            int i = it - focusableWidgets.begin();
-            int step = dirX + dirY;
-            if (step == 0) step = 1;
+    if (best) return best;
+    const auto it = std::find(focusableWidgets.begin(), focusableWidgets.end(), focusedWidget);
+    if (it == focusableWidgets.end()) return focusableWidgets[0];
 
-            i = (i + step) % static_cast<int>(focusableWidgets.size());
-            if (i < 0) i += static_cast<int>(focusableWidgets.size());
+    int idx = it - focusableWidgets.begin(), step = 0;
 
-            best = focusableWidgets[i];
-        }
-    return best ? best : focusedWidget;
+    if (dxDir > 0 || dyDir > 0) step = 1;
+    else step = -1;
+
+    idx = (idx + step) % static_cast<int>(focusableWidgets.size());
+    if (idx < 0) idx += static_cast<int>(focusableWidgets.size());
+
+    return focusableWidgets[idx];
 }

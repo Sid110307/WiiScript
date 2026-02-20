@@ -39,8 +39,6 @@ namespace Input
         enum class Type : uint8_t
         {
             Pointer,
-            PointerDown,
-            PointerUp,
             Scroll,
             KeyDown,
             KeyUp,

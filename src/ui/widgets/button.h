@@ -20,8 +20,7 @@ public:
     bool onEvent(const Input::InputEvent& e) override
     {
         const Rect r = worldBounds();
-        if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::PointerUp && pressed) &&
-            !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
+        if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
             return false;
 
         if (e.type == Input::InputEvent::Type::Pointer)
@@ -30,10 +29,10 @@ public:
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::PointerDown)
+        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
         {
             hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
-            if (hovered)
+            if (hovered || focused)
             {
                 pressed = true;
                 return true;
@@ -42,29 +41,14 @@ public:
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::PointerUp)
+        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
         {
             const bool wasPressed = pressed;
             pressed = false;
-
             hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
-            if (wasPressed && hovered && onClick) onClick();
 
+            if (wasPressed && (hovered || focused) && onClick) onClick();
             return wasPressed;
-        }
-
-        if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A && focused)
-        {
-            pressed = true;
-            return true;
-        }
-
-        if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed)
-        {
-            pressed = false;
-            if (focused && onClick) onClick();
-
-            return true;
         }
 
         return false;

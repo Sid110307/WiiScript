@@ -30,7 +30,9 @@ void KeyButton::onDraw() const
     if (!keys || !font || !font->isValid()) return;
 
     const auto& k = keys->keyAt(keyIndex);
-    const char* label = keys->shift || (keys->caps && std::isalpha(k.val[0])) ? k.shiftVal : k.val;
+    const char* label = keys->shift || (keys->caps && std::isalpha(static_cast<unsigned char>(k.val[0])))
+                            ? k.shiftVal
+                            : k.val;
     const Rect r = worldBounds();
 
     font->drawText(label, r.x + (r.w - font->textWidth(label)) / 2, r.y + (r.h - font->textHeight()) / 2, theme().text);
@@ -51,7 +53,9 @@ Keyboard::Keyboard(Font& font) : font(&font)
         btn->onClick = [this, i]
         {
             const auto& k = keys.keyAt(i);
-            activateKey(keys.shift || (keys.caps && std::isalpha(k.val[0])) ? k.shiftVal : k.val, k.action);
+            activateKey(keys.shift || (keys.caps && std::isalpha(static_cast<unsigned char>(k.val[0])))
+                            ? k.shiftVal
+                            : k.val, k.action);
         };
     }
 }

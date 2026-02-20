@@ -24,8 +24,6 @@ struct TrigLUT
     }
 };
 
-static const TrigLUT lut = {};
-
 inline void roundedRectangle(const float x, const float y, const float width, const float height, const float radiusX,
                              const float radiusY, const uint32_t color, const bool filled)
 {
@@ -40,6 +38,7 @@ inline void roundedRectangle(const float x, const float y, const float width, co
         return;
     }
 
+    static const TrigLUT lut = {};
     std::array<guVector, VERTICES> v = {};
     std::array<uint32_t, VERTICES> col = {};
 

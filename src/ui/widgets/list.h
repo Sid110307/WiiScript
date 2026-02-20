@@ -33,23 +33,6 @@ public:
             return false;
         }
 
-        if (e.type == Input::InputEvent::Type::PointerDown)
-        {
-            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y)) return false;
-
-            const int n = static_cast<int>(items.size());
-            if (n <= 0)
-            {
-                selected = -1;
-                return true;
-            }
-
-            selected = std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1);
-            if (selected >= 0 && selected < n && onItemSelected) onItemSelected(items[selected]);
-
-            return true;
-        }
-
         if (e.type != Input::InputEvent::Type::KeyDown) return false;
         if (!(focused || hovered)) return false;
 
@@ -63,7 +46,11 @@ public:
 
         if (e.key == Input::Key::A)
         {
-            if (e.pointer.valid) selected = std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1);
+            selected = e.pointer.valid
+                           ? std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1)
+                           : focused
+                           ? std::clamp(selected, 0, n - 1)
+                           : -1;
             if (selected >= 0 && selected < n && onItemSelected) onItemSelected(items[selected]);
 
             return true;

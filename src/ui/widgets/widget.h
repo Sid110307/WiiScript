@@ -7,6 +7,7 @@
 #include "../theme.h"
 #include "../../platform/platform.h"
 #include "../../gfx/font.h"
+#include "../../gfx/drawing.h"
 
 struct LayoutParams
 {
@@ -20,16 +21,14 @@ class Widget
 public:
     virtual ~Widget() = default;
 
-    Rect bounds = {};
-    bool visible = true, enabled = true;
+    float radiusX = 8.0f, radiusY = 8.0f;
+    bool visible = true, enabled = true, focusableOverride = false, focused = false, showFocus = false;
 
+    Rect bounds = {};
     Widget* parent = nullptr;
     std::vector<std::unique_ptr<Widget>> children;
     Font* font = nullptr;
     LayoutParams layout;
-
-    float radiusX = 8.0f, radiusY = 8.0f;
-    bool focusableOverride = false, focused = false;
 
     template <typename T, typename... Args>
     T* addChild(Args&&... args)
@@ -57,15 +56,23 @@ public:
     void update(const double dt)
     {
         if (!visible) return;
-        for (const auto& c : children) c->update(dt);
+
         onUpdate(dt);
+        for (const auto& c : children) c->update(dt);
     }
 
     void draw() const
     {
         if (!visible) return;
+
         onDraw();
         for (const auto& c : children) c->draw();
+
+        if (focused && showFocus)
+        {
+            const Rect r = worldBounds().inset(-2);
+            roundedRectangle(r.x, r.y, r.w, r.h, radiusX + 2, radiusY + 2, theme().accent, false);
+        }
     }
 
     [[nodiscard]] Rect worldBounds() const
@@ -86,6 +93,7 @@ public:
     void collectFocusable(std::vector<Widget*>& out)
     {
         if (!visible || !enabled) return;
+
         if (isFocusable()) out.push_back(this);
         for (const auto& c : children) c->collectFocusable(out);
     }
