@@ -29,6 +29,8 @@ public:
     [[nodiscard]] const std::string& getText() const;
     void setText(const std::string& str);
 
+    std::function<void(const char* key, KeyAction action)> onKey;
+
 protected:
     void onDraw() const override;
     void onUpdate(double) override;

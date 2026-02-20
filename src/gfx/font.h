@@ -13,7 +13,6 @@ public:
 
     [[nodiscard]] float textWidth(const std::string& text) const;
     [[nodiscard]] float textHeight() const;
-    [[nodiscard]] bool isValid() const;
 
 private:
     using FontPtr = std::unique_ptr<GRRLIB_ttfFont, decltype(&GRRLIB_FreeTTF)>;

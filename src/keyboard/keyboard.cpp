@@ -27,7 +27,7 @@ size_t KeyButton::index() const { return keyIndex; }
 void KeyButton::onDraw() const
 {
     Button::onDraw();
-    if (!keys || !font || !font->isValid()) return;
+    if (!keys || !font) return;
 
     const auto& k = keys->keyAt(keyIndex);
     const char* label = keys->shift || (keys->caps && std::isalpha(static_cast<unsigned char>(k.val[0])))
@@ -125,4 +125,5 @@ void Keyboard::activateKey(const char* keyText, const KeyAction action)
         }
         break;
     }
+    if (onKey) onKey(keyText, action);
 }

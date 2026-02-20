@@ -30,4 +30,3 @@ float Font::textWidth(const std::string& text) const
 }
 
 float Font::textHeight() const { return static_cast<float>(fontSize); }
-bool Font::isValid() const { return font != nullptr; }

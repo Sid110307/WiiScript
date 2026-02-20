@@ -86,7 +86,7 @@ protected:
         {
             first = std::max(0, static_cast<int>(std::floor((viewportTopY - r.y) / rowH)));
             last = std::min(static_cast<int>(items.size()),
-                            static_cast<int>(std::ceil((viewportTopY + viewportH - r.y) / rowH)));
+                            static_cast<int>(std::ceil((viewportTopY + viewportH - r.y) / rowH)) + 1);
         }
 
         for (int i = first; i < last; ++i)
@@ -96,8 +96,16 @@ protected:
             GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().selection : theme().btn, true);
             GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
-            if (const Font* f = getFont(); f && f->isValid() && !items[i].empty())
-                f->drawText(items[i], r.x + 10, y + (rowH - f->textHeight()) / 2, theme().text);
+            std::string text = items[i];
+            if (const Font* f = getFont(); f)
+                if (const float textW = f->textWidth(text); textW > r.w - 20)
+                {
+                    while (!text.empty() && f->textWidth(text + "...") > r.w - 20) text.pop_back();
+                    text += "...";
+                }
+
+            if (const Font* f = getFont(); f && !text.empty())
+                f->drawText(text, r.x + 10, y + (rowH - f->textHeight()) / 2, theme().text);
         }
     }
 };

@@ -10,12 +10,12 @@
 class ScrollBar : public Widget
 {
 public:
+    explicit ScrollBar(const BoxDir d) : dir(d) { focusableOverride = true; }
+
     const float minThumb = 18.0f;
     BoxDir dir = BoxDir::Horizontal;
     float contentSize = 0.0f, viewSize = 0.0f, dragGrab = 0.0f, scrollAmount = 0.0f, *scroll = nullptr;
     bool hovered = false, dragging = false;
-
-    explicit ScrollBar(const BoxDir d) : dir(d) { focusableOverride = true; }
 
     bool onEvent(const Input::InputEvent& e) override
     {
@@ -169,41 +169,43 @@ protected:
     void onUpdate(double) override
     {
         Rect view = Rect({0, 0, bounds.w, bounds.h}).inset(padding), barRectY = Rect::empty(), barRectX = Rect::empty();
-        if (const auto* list = dynamic_cast<List*>(content); list && content)
+        if (!content)
         {
-            content->bounds.w = view.w;
-            content->bounds.h = list->contentHeight();
+            scrollX = scrollY = 0.0f;
+            if (barX) barX->visible = false;
+            if (barY) barY->visible = false;
+
+            return;
         }
 
-        const bool needBarX = barX && content && content->bounds.w > view.w,
-                   needBarY = barY && content && content->bounds.h > view.h;
+        content->bounds.w = std::max(content->bounds.w, view.w);
+        if (const auto* list = dynamic_cast<List*>(content)) content->bounds.h = list->contentHeight();
+        if (const auto* textInput = dynamic_cast<TextInput*>(content))
+            content->bounds.h = static_cast<float>(textInput->buffer().getLines().size()) * textInput->font->
+                textHeight() + textInput->emptyArea;
 
+        const bool needBarX = barX && content->bounds.w > view.w, needBarY = barY && content->bounds.h > view.h;
         if (needBarX) barRectX = view.takeBottom(barWidth);
         if (needBarY) barRectY = view.takeRight(barWidth);
 
-        if (content)
-        {
-            content->bounds.x = view.x - scrollX;
-            content->bounds.y = view.y - scrollY;
-        }
-
+        content->bounds = Rect({view.x - scrollX, view.y - scrollY, view.w, view.h});
         if (barX)
         {
             barX->scroll = &scrollX;
             barX->viewSize = view.w;
             barX->visible = needBarX;
+            barX->contentSize = content->bounds.w;
             barX->bounds = barRectX;
             if (needBarY) barX->bounds.w -= barWidth;
-            if (content) barX->contentSize = content->bounds.w;
         }
         if (barY)
         {
             barY->scroll = &scrollY;
             barY->viewSize = view.h;
             barY->visible = needBarY;
+            barY->contentSize = content->bounds.h;
             barY->bounds = barRectY;
             if (needBarX) barY->bounds.h -= barWidth;
-            if (content) barY->contentSize = content->bounds.h;
         }
 
         clampScroll();
@@ -215,6 +217,7 @@ protected:
         if (content && content->visible)
         {
             Rect clip = worldBounds().inset(padding);
+
             if (barY && barY->visible) clip.w -= barWidth;
             if (barX && barX->visible) clip.h -= barWidth;
 
@@ -222,6 +225,12 @@ protected:
             {
                 list->viewportTopY = clip.y;
                 list->viewportH = clip.h;
+            }
+
+            if (auto* textInput = dynamic_cast<TextInput*>(content))
+            {
+                textInput->viewportScrollY = scrollY;
+                textInput->viewportH = clip.h;
             }
 
             GX_SetScissor(static_cast<int>(clip.x), static_cast<int>(clip.y), static_cast<int>(clip.w),

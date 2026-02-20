@@ -9,6 +9,7 @@
 #include "./widgets/panel.h"
 #include "./widgets/button.h"
 #include "./widgets/list.h"
+#include "./widgets/text_input.h"
 #include "./widgets/scrollbars.h"
 #include "./widgets/layout.h"
 
@@ -31,7 +32,8 @@ public:
 
     Button *btnRun = nullptr, *btnStop = nullptr, *btnSave = nullptr;
     List* fileList = nullptr;
-    ScrollView* fileListScroll = nullptr;
+    ScrollView *fileListScroll = nullptr, *editorScroll = nullptr;
+    TextInput* editor = nullptr;
     Keyboard* keyboard = nullptr;
 
 private:

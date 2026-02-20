@@ -70,13 +70,13 @@ protected:
         roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, btnColor, true);
         roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
-        if (const Font* f = getFont(); f && f->isValid() && !text.empty())
+        if (const Font* f = getFont(); f && !text.empty())
             f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, textColor);
     }
 
     void onUpdate(double) override
     {
-        if (const Font* f = getFont(); f && f->isValid() && !text.empty())
+        if (const Font* f = getFont(); f && !text.empty())
         {
             if (layout.fixedWidth < 0.0f) bounds.w = f->textWidth(text) + paddingX * 2.0f;
             if (layout.fixedHeight < 0.0f) bounds.h = f->textHeight() + paddingY * 2.0f;

@@ -4,7 +4,6 @@
 
 UIRoot::UIRoot(Font& codeFont, Font& uiFont)
 {
-    (void)codeFont;
     root->font = &uiFont;
 
     left = root->addChild<Panel>();
@@ -19,12 +18,20 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
     btnStop = toolbar->addChild<Button>("Stop");
     btnSave = toolbar->addChild<Button>("Save");
 
+    editorScroll = center->addChild<ScrollView>();
+    editor = editorScroll->addChild<TextInput>(codeFont);
+    editorScroll->content = editor;
+    editorScroll->barY = editorScroll->addChild<ScrollBar>(BoxDir::Vertical);
+    editorScroll->barY->scrollAmount = codeFont.textHeight();
+
     fileListScroll = left->addChild<ScrollView>();
     fileList = fileListScroll->addChild<List>();
     fileListScroll->content = fileList;
     fileListScroll->barY = fileListScroll->addChild<ScrollBar>(BoxDir::Vertical);
     fileListScroll->barY->scrollAmount = fileList->rowH;
+
     keyboard = bottom->addChild<Keyboard>(uiFont);
+    keyboard->onKey = [this](const char* key, const KeyAction action) { if (editor) editor->onKey(key, action); };
 
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
@@ -32,7 +39,9 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
         for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
     }
 
-    for (int i = 1; i <= 150; ++i) fileList->items.push_back("Item " + std::to_string(i));
+    for (int i = 1; i <= 150; ++i)
+        fileList->items.push_back(
+            "Lorem ipsum dolor sit amet something " + std::to_string(i));
 
     rebuildFocusList();
     if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
@@ -57,6 +66,13 @@ void UIRoot::layout(const float screenW, const float screenH) const
 
     center->bounds = content;
     toolbar->bounds = Rect({0, 0, center->bounds.w, toolbar->layout.fixedHeight});
+
+    auto centerContent = Rect({0, 0, center->bounds.w, center->bounds.h});
+    centerContent.takeTop(toolbar->layout.fixedHeight);
+
+    editorScroll->bounds = centerContent.inset(10);
+    if (editorScroll->barY) editorScroll->barY->layout.fixedHeight = editorScroll->bounds.h;
+    editor->bounds.w = editorScroll->bounds.w;
 }
 
 void UIRoot::update(const double dt)
