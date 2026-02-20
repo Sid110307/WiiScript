@@ -22,6 +22,12 @@ static std::string join(const std::string& a, const std::string& b)
     return normalize(a + "/" + b);
 }
 
+static bool hasParentPath(const std::string& p)
+{
+    return p == ".." || p.rfind("../", 0) == 0 || p.find("/../") != std::string::npos ||
+        (p.size() >= 3 && p.compare(p.size() - 3, 3, "/..") == 0);
+}
+
 bool FileSystem::init()
 {
     if (ready) return true;
@@ -167,7 +173,7 @@ bool FileSystem::writeFile(const std::string& path, const std::vector<uint8_t>& 
 {
     const std::string p = normalize(path);
 
-    if (p.empty() || p.rfind(workspaceRoot, 0) != 0) return false;
+    if (p.empty() || hasParentPath(p) || p.rfind(workspaceRoot, 0) != 0) return false;
     if (const auto slash = p.find_last_of('/'); slash != std::string::npos && !ensureDir(p.substr(0, slash)))
         return false;
 

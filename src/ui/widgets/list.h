@@ -22,6 +22,8 @@ public:
     bool hovered = false;
     float rowH = 22.0f, viewportTopY = 0.0f, viewportH = 0.0f;
 
+    [[nodiscard]] float contentHeight() const { return rowH * static_cast<float>(items.size()); }
+
     bool onEvent(const Input::InputEvent& e) override
     {
         if (!visible || !enabled) return false;
@@ -72,11 +74,6 @@ public:
     }
 
 protected:
-    void onUpdate(double) override
-    {
-        bounds.h = rowH * static_cast<float>(items.size());
-    }
-
     void onDraw() const override
     {
         const Rect r = worldBounds();
@@ -96,7 +93,7 @@ protected:
         {
             const float y = r.y + static_cast<float>(i) * rowH;
 
-            GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().accent : theme().btn, true);
+            GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().selection : theme().btn, true);
             GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
             if (const Font* f = getFont(); f && f->isValid() && !items[i].empty())

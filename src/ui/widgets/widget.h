@@ -71,7 +71,7 @@ public:
         if (focused && showFocus)
         {
             const Rect r = worldBounds().inset(-2);
-            roundedRectangle(r.x, r.y, r.w, r.h, radiusX + 2, radiusY + 2, theme().accent, false);
+            roundedRectangle(r.x, r.y, r.w, r.h, radiusX + 2, radiusY + 2, theme().focus, false);
         }
     }
 

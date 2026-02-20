@@ -21,10 +21,11 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
 
     fileListScroll = left->addChild<ScrollView>();
     fileList = fileListScroll->addChild<List>();
+    fileListScroll->content = fileList;
     fileListScroll->barY = fileListScroll->addChild<ScrollBar>(BoxDir::Vertical);
     fileListScroll->barY->scrollAmount = fileList->rowH;
-
     keyboard = bottom->addChild<Keyboard>(uiFont);
+
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
         fileList->items.clear();
@@ -46,9 +47,8 @@ void UIRoot::layout(const float screenW, const float screenH) const
     left->visible = showLeft;
     left->bounds = leftW > 0.0f ? content.takeLeft(leftW) : Rect::empty();
     fileListScroll->visible = showLeft;
-    fileListScroll->bounds = left->bounds.inset(10);
+    fileListScroll->bounds = Rect({0, 0, left->bounds.w, left->bounds.h}).inset(10);
     if (fileListScroll->barY) fileListScroll->barY->layout.fixedHeight = fileListScroll->bounds.h;
-    fileList->bounds = Rect({0, 0, fileListScroll->bounds.w, fileListScroll->bounds.h});
 
     bottom->visible = showBottom;
     bottom->bounds = bottomH > 0.0f ? content.takeBottom(bottomH) : Rect::empty();
@@ -80,7 +80,13 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
     if (e.type == Input::InputEvent::Type::Pointer)
     {
         pointer = e.pointer;
-        if (captureWidget) captureWidget->onEvent(e);
+        if (captureWidget)
+        {
+            captureWidget->onEvent(e);
+            hoverWidget = captureWidget;
+
+            return;
+        }
 
         Widget* prevHover = hoverWidget;
         hoverWidget = root->hitTest(pointer.x, pointer.y);

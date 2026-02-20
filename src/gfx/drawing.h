@@ -6,6 +6,7 @@
 #include <grrlib.h>
 
 constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = ANGLES + 4;
+static_assert(90 % STEP_DEG == 0, "STEP_DEG must divide 90 evenly");
 
 struct TrigLUT
 {
@@ -29,8 +30,7 @@ inline void roundedRectangle(const float x, const float y, const float width, co
 {
     if (width <= 0.0f || height <= 0.0f) return;
     const float rx = std::clamp(radiusX, 0.0f, 0.5f * width), ry = std::clamp(radiusY, 0.0f, 0.5f * height),
-                innerW = width - 2.0f * rx, innerH = height - 2.0f * ry, cx = x + 0.5f * width, cy = y + 0.5f * height,
-                brCx = cx + 0.5f * innerW, brCy = cy + 0.5f * innerH;
+                ww = width - 2.0f * rx, hh = height - 2.0f * ry;
 
     if (rx <= 0.0f || ry <= 0.0f)
     {
@@ -56,14 +56,16 @@ inline void roundedRectangle(const float x, const float y, const float width, co
         for (int i = startIdx; i <= endIdx; ++i, ++out) setV(out, lut.c[i] * rx + ccx, lut.s[i] * ry + ccy);
     };
 
-    arc(0, 0, 8, brCx, brCy);
-    setV(9, brCx - innerW, v[8].y);
-    arc(10, 9, 17, brCx - innerW, brCy);
-    setV(19, v[18].x, brCy - innerH);
-    arc(20, 18, 26, brCx - innerW, brCy - innerH);
-    setV(29, v[8].x, v[28].y);
-    arc(30, 27, 35, brCx, brCy - innerH);
-    setV(39, v[0].x, v[0].y);
+    arc(0, 0, ANGLES / 4 - 1, x + 0.5f * width + 0.5f * ww, y + 0.5f * height + 0.5f * hh);
+    setV(ANGLES / 4, x + 0.5f * width + 0.5f * ww - ww, v[ANGLES / 4 - 1].y);
+    arc(ANGLES / 4 + 1, ANGLES / 4, ANGLES / 2 - 1, x + 0.5f * width + 0.5f * ww - ww, y + 0.5f * height + 0.5f * hh);
+    setV(ANGLES / 2 + 1, v[ANGLES / 2].x, y + 0.5f * height + 0.5f * hh - hh);
+    arc(ANGLES / 2 + 2, ANGLES / 2, 3 * ANGLES / 4 - 1, x + 0.5f * width + 0.5f * ww - ww,
+        y + 0.5f * height + 0.5f * hh - hh);
+    setV(3 * ANGLES / 4 + 2, x + 0.5f * width + 0.5f * ww, v[3 * ANGLES / 4 + 1].y);
+    arc(3 * ANGLES / 4 + 3, 3 * ANGLES / 4, ANGLES - 1, x + 0.5f * width + 0.5f * ww,
+        y + 0.5f * height + 0.5f * hh - hh);
+    setV(VERTICES - 1, v[0].x, v[0].y);
 
     GRRLIB_GXEngine(v.data(), col.data(), VERTICES, filled ? GX_TRIANGLEFAN : GX_LINESTRIP);
 }

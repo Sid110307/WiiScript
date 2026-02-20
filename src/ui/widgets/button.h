@@ -58,16 +58,20 @@ protected:
     void onDraw() const override
     {
         const Rect r = worldBounds();
+        const uint32_t textColor = enabled ? theme().text : theme().textDisabled,
+                       btnColor = pressed
+                                      ? theme().btnDown
+                                      : hovered
+                                      ? theme().btnHover
+                                      : enabled
+                                      ? theme().btn
+                                      : theme().btnDisabled;
 
-        uint32_t col = theme().btn;
-        if (pressed) col = theme().btnDown;
-        else if (hovered) col = theme().btnHover;
-
-        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, col, true);
+        roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, btnColor, true);
         roundedRectangle(r.x, r.y, r.w, r.h, radiusX, radiusY, theme().panelBorder, false);
 
         if (const Font* f = getFont(); f && f->isValid() && !text.empty())
-            f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, theme().text);
+            f->drawText(text, r.x + (r.w - f->textWidth(text)) / 2, r.y + (r.h - f->textHeight()) / 2, textColor);
     }
 
     void onUpdate(double) override
