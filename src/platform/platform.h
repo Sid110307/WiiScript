@@ -106,9 +106,17 @@ namespace FileSystem
     bool exists(const std::string& path);
     bool isDir(const std::string& path);
 
+    std::string normalize(std::string path);
+    std::string join(const std::string& a, const std::string& b);
+
     bool listDir(const std::string& path, std::vector<DirEntry>& outEntries, bool sort = true);
     bool readFile(const std::string& path, std::vector<uint8_t>& outData);
     bool writeFile(const std::string& path, const std::vector<uint8_t>& data);
+
+    bool makeDir(const std::string& path);
+    bool renamePath(const std::string& from, const std::string& to);
+    bool copyPath(const std::string& from, const std::string& to);
+    bool removePath(const std::string& path);
 
     inline std::string appRoot = "sd:/apps/WiiScript/", workspaceRoot = "sd:/WiiScript/";
 }

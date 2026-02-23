@@ -3,29 +3,61 @@
 #include <cstring>
 #include <algorithm>
 
+#include <sys/unistd.h>
 #include <dirent.h>
 #include <fat.h>
 
 static bool ready = false;
 
-static std::string normalize(std::string path)
+static bool isInsideWorkspace(const std::string& path)
 {
-    for (auto& c : path) if (c == '\\') c = '/';
-    return path;
+    const std::string p = FileSystem::normalize(path);
+    return !p.empty() && p != ".." && p.rfind("../", 0) != 0 && p.find("/../") == std::string::npos && (p.size() < 3 ||
+        p.compare(p.size() - 3, 3, "/..") != 0) && p.rfind(FileSystem::workspaceRoot, 0) == 0;
 }
 
-static std::string join(const std::string& a, const std::string& b)
+static std::string stripPrefix(std::string s)
 {
-    if (a.empty()) return normalize(b);
-    if (b.empty()) return normalize(a);
-    if (a.back() == '/' || a.back() == '\\') return normalize(a + b);
-    return normalize(a + "/" + b);
+    s = FileSystem::normalize(std::move(s));
+    while (s.size() > 3 && s.back() == '/') s.pop_back();
+
+    return s;
 }
 
-static bool hasParentPath(const std::string& p)
+static bool copyFileTo(const std::string& src, const std::string& dst)
 {
-    return p == ".." || p.rfind("../", 0) == 0 || p.find("/../") != std::string::npos ||
-        (p.size() >= 3 && p.compare(p.size() - 3, 3, "/..") == 0);
+    std::vector<uint8_t> data;
+    if (!FileSystem::readFile(src, data)) return false;
+
+    return FileSystem::writeFile(dst, data);
+}
+
+static bool copyDirRecursive(const std::string& srcDir, const std::string& dstDir)
+{
+    if (!FileSystem::makeDir(dstDir)) return false;
+
+    std::vector<FileSystem::DirEntry> entries;
+    if (!FileSystem::listDir(srcDir, entries, false)) return false;
+
+    return std::all_of(entries.begin(), entries.end(), [&](const FileSystem::DirEntry& e)
+    {
+        const std::string src = e.path;
+        const std::string dst = FileSystem::normalize(dstDir + "/" + e.name);
+
+        return e.isDir ? copyDirRecursive(src, dst) : copyFileTo(src, dst);
+    });
+}
+
+static bool deleteDirRecursive(const std::string& dir)
+{
+    std::vector<FileSystem::DirEntry> entries;
+    if (!FileSystem::listDir(dir, entries, false)) return false;
+
+    return std::all_of(entries.begin(), entries.end(), [&](const FileSystem::DirEntry& e)
+    {
+        const std::string path = e.path;
+        return e.isDir ? deleteDirRecursive(path) : remove(path.c_str()) == 0;
+    }) && rmdir(dir.c_str()) == 0;
 }
 
 bool FileSystem::init()
@@ -80,6 +112,20 @@ bool FileSystem::isDir(const std::string& path)
     if (stat(normalize(path).c_str(), &st) != 0) return false;
 
     return S_ISDIR(st.st_mode);
+}
+
+std::string FileSystem::normalize(std::string path)
+{
+    for (auto& c : path) if (c == '\\') c = '/';
+    return path;
+}
+
+std::string FileSystem::join(const std::string& a, const std::string& b)
+{
+    if (a.empty()) return normalize(b);
+    if (b.empty()) return normalize(a);
+    if (a.back() == '/' || a.back() == '\\') return normalize(a + b);
+    return normalize(a + "/" + b);
 }
 
 bool FileSystem::listDir(const std::string& path, std::vector<DirEntry>& outEntries, bool sort)
@@ -171,7 +217,7 @@ bool FileSystem::writeFile(const std::string& path, const std::vector<uint8_t>& 
 {
     const std::string p = normalize(path);
 
-    if (p.empty() || hasParentPath(p) || p.rfind(workspaceRoot, 0) != 0) return false;
+    if (!isInsideWorkspace(p)) return false;
     if (const auto slash = p.find_last_of('/'); slash != std::string::npos && !ensureDir(p.substr(0, slash)))
         return false;
 
@@ -192,4 +238,41 @@ bool FileSystem::writeFile(const std::string& path, const std::vector<uint8_t>& 
     remove(p.c_str());
 
     return rename(temp.c_str(), p.c_str()) == 0;
+}
+
+bool FileSystem::makeDir(const std::string& path)
+{
+    const std::string p = normalize(path);
+    if (!isInsideWorkspace(p)) return false;
+    if (p.empty()) return false;
+    if (isDir(p)) return true;
+
+    return mkdir(p.c_str(), 0777) == 0 || errno == EEXIST;
+}
+
+bool FileSystem::renamePath(const std::string& from, const std::string& to)
+{
+    const std::string src = normalize(from), dst = normalize(to);
+    return !isInsideWorkspace(src) || !isInsideWorkspace(dst) || !exists(src) || exists(dst)
+               ? false
+               : rename(src.c_str(), dst.c_str()) == 0;
+}
+
+bool FileSystem::copyPath(const std::string& from, const std::string& to)
+{
+    const std::string src = stripPrefix(from), dst = stripPrefix(to);
+
+    if (!isInsideWorkspace(src) || !isInsideWorkspace(dst)) return false;
+    if (!exists(src)) return false;
+    if (exists(dst)) return false;
+
+    return isDir(src) ? copyDirRecursive(src, dst) : copyFileTo(src, dst);
+}
+
+bool FileSystem::removePath(const std::string& path)
+{
+    const std::string p = stripPrefix(path);
+    if (!isInsideWorkspace(p) || !exists(p)) return false;
+
+    return isDir(p) ? deleteDirRecursive(p) : remove(p.c_str()) == 0;
 }

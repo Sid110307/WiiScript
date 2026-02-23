@@ -1,7 +1,5 @@
 #pragma once
 
-#include <memory>
-
 #include "../platform/platform.h"
 #include "../keyboard/keyboard.h"
 
@@ -11,6 +9,9 @@
 #include "./widgets/text_input.h"
 #include "./widgets/scrollbar.h"
 #include "./widgets/context_menu.h"
+#include "./widgets/modal.h"
+
+#include <memory>
 
 class UIRoot
 {
@@ -33,8 +34,30 @@ public:
     TextInput* editor = nullptr;
     Keyboard* keyboard = nullptr;
     ContextMenu* contextMenu = nullptr;
+    Modal* modal = nullptr;
 
 private:
+    struct FileClipboard
+    {
+        std::string path, name;
+        bool isDir = false, valid = false;
+
+        void clear();
+    } fileClipboard;
+
+    struct ListItem
+    {
+        std::string label, name;
+        bool isDir = false, isUp = false;
+    };
+
+    std::string currentDir = FileSystem::workspaceRoot;
+    std::vector<ListItem> currentEntries;
+    [[nodiscard]] bool inSubdir() const;
+
+    void refreshFileList();
+    static std::string uniqueName(const std::string& dir, const std::string& name);
+
     void setFocus(Widget* w, bool show);
     void rebuildFocusList();
     [[nodiscard]] Widget* findNextFocusable(int dirX, int dirY) const;

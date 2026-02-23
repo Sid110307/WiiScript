@@ -7,6 +7,7 @@ struct Theme
     uint32_t bg = 0x101018FF;
     uint32_t panel = 0x1A1A22FF;
     uint32_t panelBorder = 0x2A2A36FF;
+    uint32_t modalBackdrop = 0x00000088;
 
     uint32_t btn = 0x252533FF;
     uint32_t btnHover = 0x333346FF;

@@ -1,4 +1,7 @@
 #include "./ui_root.h"
+#include "../platform/path.h"
+
+#include <sys/stat.h>
 
 UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& uiFont)
 {
@@ -29,61 +32,247 @@ UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& u
 
     fileListScroll = left->addChild<ScrollView>();
     fileList = fileListScroll->addChild<List>();
-    fileList->onItemSelected = [this](const std::string& item)
+    fileList->onItemSelected = [this](const std::string&)
     {
-        if (item.empty()) return;
-        const std::string path = FileSystem::workspaceRoot + item;
-        if (FileSystem::isDir(path)) return;
+        if (!fileList) return;
+        const int i = fileList->selected;
+        if (i < 0 || i >= static_cast<int>(currentEntries.size())) return;
+
+        const auto& it = currentEntries[i];
+        if (it.isUp)
+        {
+            if (!inSubdir()) return;
+            std::string d = currentDir;
+            while (d.size() > 1 && d.back() == '/') d.pop_back();
+
+            if (const auto slash = d.find_last_of('/'); slash != std::string::npos)
+            {
+                d = d.substr(0, slash + 1);
+                if (d.rfind(FileSystem::workspaceRoot, 0) == 0) currentDir = d;
+            }
+
+            refreshFileList();
+            return;
+        }
+
+        const std::string path = FileSystem::join(currentDir, it.name);
+        if (it.isDir)
+        {
+            std::string next = FileSystem::normalize(path);
+            if (next.back() != '/') next.push_back('/');
+            currentDir = next;
+            refreshFileList();
+
+            return;
+        }
+
         if (editor) editor->loadFile(path);
     };
     fileList->onContextMenu = [this](const float x, const float y)
     {
         if (!contextMenu) return;
+        auto selectedIndex = [this]() -> int
+        {
+            if (!fileList) return -1;
+            const int i = fileList->selected;
+            if (i < 0 || i >= static_cast<int>(currentEntries.size())) return -1;
+            if (currentEntries[i].isUp) return -1;
+
+            return i;
+        };
+
+        auto selectedName = [this, selectedIndex]() -> const ListItem*
+        {
+            const int i = selectedIndex();
+            if (i < 0) return nullptr;
+
+            return &currentEntries[i];
+        };
+
+        auto selectedPath = [this, selectedName]() -> std::string
+        {
+            const auto* item = selectedName();
+            if (!item) return "";
+
+            return FileSystem::join(currentDir, item->name);
+        };
+
+        auto newFileAction = [this](const std::string& raw)
+        {
+            std::string err;
+            const std::string name = sanitize(raw, &err);
+
+            if (name.empty())
+            {
+                if (modal) modal->showMessage("Invalid Name", err);
+                return;
+            }
+
+            const std::string path = currentDir + uniqueName(currentDir, name);
+            if (const std::vector<uint8_t> data; !FileSystem::writeFile(path, data))
+            {
+                if (modal) modal->showMessage("Error", "Failed to create file.");
+                return;
+            }
+
+            refreshFileList();
+        };
+
+        auto newFolderAction = [this](const std::string& raw)
+        {
+            std::string err;
+            const std::string name = sanitize(raw, &err);
+
+            if (name.empty())
+            {
+                if (modal) modal->showMessage("Invalid Name", err);
+                return;
+            }
+
+            if (!FileSystem::makeDir(currentDir + uniqueName(currentDir, name)))
+            {
+                if (modal) modal->showMessage("Error", "Failed to create folder.");
+                return;
+            }
+
+            refreshFileList();
+        };
+
+        auto renameAction = [this, selectedPath, selectedName]
+        {
+            const std::string oldPath = selectedPath();
+            const auto* item = selectedName();
+            if (oldPath.empty() || !item || !modal) return;
+
+            modal->showInput("Rename", "Enter new name:", item->name, [this, oldPath, item](const std::string& raw)
+            {
+                std::string err;
+                const std::string newName = sanitize(raw, &err);
+
+                if (newName.empty())
+                {
+                    if (modal) modal->showMessage("Invalid Name", err);
+                    return;
+                }
+                if (newName == item->name) return;
+
+                const std::string newPath = currentDir + newName;
+                if (FileSystem::exists(newPath))
+                {
+                    if (modal) modal->showMessage("Rename", "A file/folder with that name already exists.");
+                    return;
+                }
+
+                if (!FileSystem::renamePath(oldPath, newPath))
+                {
+                    if (modal) modal->showMessage("Rename", "Failed to rename file/folder.");
+                    return;
+                }
+
+                refreshFileList();
+            });
+        };
+
+        auto copyAction = [this, selectedPath, selectedName]
+        {
+            const auto* item = selectedName();
+            if (!item) return;
+
+            fileClipboard.path = selectedPath();
+            fileClipboard.name = item->name;
+            fileClipboard.isDir = item->isDir;
+            fileClipboard.valid = true;
+        };
+
+        auto pasteAction = [this]
+        {
+            if (!fileClipboard.valid) return;
+
+            std::string err;
+            const std::string base = sanitize(fileClipboard.name, &err);
+            if (base.empty()) return;
+
+            const std::string dest = currentDir + uniqueName(currentDir, base);
+            if (fileClipboard.isDir)
+            {
+                std::string src = FileSystem::normalize(fileClipboard.path), d = FileSystem::normalize(dest);
+
+                if (src.back() != '/') src.push_back('/');
+                if (d.back() != '/') d.push_back('/');
+
+                if (d.rfind(src, 0) == 0)
+                {
+                    if (modal) modal->showMessage("Error", "Cannot paste a folder into itself.");
+                    return;
+                }
+            }
+
+            if (!FileSystem::copyPath(fileClipboard.path, dest))
+            {
+                if (modal) modal->showMessage("Error", "Failed to paste file/folder.");
+                return;
+            }
+
+            refreshFileList();
+        };
+
+        auto deleteAction = [this, selectedPath, selectedName]
+        {
+            const std::string path = selectedPath();
+            const auto* item = selectedName();
+            if (path.empty() || !item || !modal) return;
+
+            modal->showConfirm("Delete", "Delete \"" + item->name + (item->isDir ? "/\" ?" : "\" ?"), [this, path]
+            {
+                if (!FileSystem::removePath(path))
+                {
+                    if (modal) modal->showMessage("Delete", "Failed to delete file/folder.");
+                    return;
+                }
+                refreshFileList();
+            });
+        };
+
+        auto propertiesAction = [this, selectedPath, selectedName]
+        {
+            const std::string path = selectedPath();
+            const auto* item = selectedName();
+            if (path.empty() || !item || !modal) return;
+
+            std::string msg = "Name: " + item->name + (item->isDir ? "/" : "") + "\nFolder: " + currentDir + "\nPath: "
+                + path + "\nType: " + (item->isDir ? "Folder\n" : "File\n");
+            struct stat st = {};
+            if (stat(path.c_str(), &st) == 0)
+                msg += "Size: " + std::to_string(static_cast<uint64_t>(st.st_size)) + " B\n";
+
+            modal->showMessage("Properties", msg);
+        };
+
         contextMenu->openAt(x, y, {
                                 {
-                                    "New File", []
+                                    "New File",
+                                    [this, newFileAction]
                                     {
-                                        /* TODO */
+                                        if (!modal) return;
+                                        modal->showInput("New File", "Enter file name:", "New File.txt", newFileAction);
                                     }
                                 },
                                 {
-                                    "New Folder", []
+                                    "New Folder",
+                                    [this, newFolderAction]
                                     {
-                                        /* TODO */
-                                    }
-                                },
-                                {"", nullptr},
-                                {
-                                    "Rename", []
-                                    {
-                                        /* TODO */
-                                    }
-                                },
-                                {
-                                    "Copy", []
-                                    {
-                                        /* TODO */
-                                    }
-                                },
-                                {
-                                    "Paste", []
-                                    {
-                                        /* TODO */
-                                    }
-                                },
-                                {
-                                    "Delete", []
-                                    {
-                                        /* TODO */
+                                        if (!modal) return;
+                                        modal->showInput("New Folder", "Enter folder name:", "New Folder",
+                                                         newFolderAction);
                                     }
                                 },
                                 {"", nullptr},
-                                {
-                                    "Properties", []
-                                    {
-                                        /* TODO */
-                                    }
-                                }
+                                {"Rename", renameAction},
+                                {"Copy", copyAction},
+                                {"Paste", pasteAction},
+                                {"Delete", deleteAction},
+                                {"", nullptr},
+                                {"Properties", propertiesAction}
                             }, this->screenW, this->screenH);
     };
 
@@ -94,18 +283,21 @@ UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& u
     keyboard = bottom->addChild<Keyboard>(uiFont);
     keyboard->onKey = [this](const char* key, const KeyAction action)
     {
+        if (modal && modal->isOpen())
+        {
+            modal->onKey(key, action);
+            return;
+        }
+
         if (editor && !editor->focused) setFocus(editor, false);
         if (editor) editor->onKey(key, action);
     };
     contextMenu = root->addChild<ContextMenu>();
+    modal = root->addChild<Modal>();
 
-    if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
-    {
-        fileList->items.clear();
-        for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
-    }
-
+    refreshFileList();
     rebuildFocusList();
+
     if (editor && editor->isFocusable()) setFocus(editor, false);
     else if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
 }
@@ -153,6 +345,12 @@ void UIRoot::update(const double dt)
 
 void UIRoot::routeEvent(const Input::InputEvent& e)
 {
+    if (modal && modal->isOpen())
+    {
+        modal->onEvent(e);
+        if (e.type != Input::InputEvent::Type::Pointer) return;
+    }
+
     if (e.type == Input::InputEvent::Type::Pointer)
     {
         pointer = e.pointer;
@@ -275,6 +473,70 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
 }
 
 void UIRoot::draw() const { root->draw(); }
+
+void UIRoot::FileClipboard::clear()
+{
+    path.clear();
+    name.clear();
+    isDir = false;
+    valid = false;
+}
+
+bool UIRoot::inSubdir() const { return currentDir != FileSystem::workspaceRoot; }
+
+void UIRoot::refreshFileList()
+{
+    if (!fileList) return;
+
+    currentEntries.clear();
+    fileList->items.clear();
+
+    if (inSubdir())
+    {
+        currentEntries.push_back({"../", "..", true, true});
+        fileList->items.emplace_back("../");
+    }
+
+    std::vector<FileSystem::DirEntry> entries;
+    if (!FileSystem::listDir(currentDir, entries, true)) return;
+
+    for (const auto& e : entries)
+    {
+        ListItem item({e.name + (e.isDir ? "/" : ""), e.name, e.isDir, false});
+
+        currentEntries.push_back(item);
+        fileList->items.push_back(item.label);
+    }
+    fileList->selected = -1;
+}
+
+std::string UIRoot::uniqueName(const std::string& dir, const std::string& name)
+{
+    auto base = name;
+    auto ext = std::string();
+
+    if (name.find('.') != std::string::npos)
+    {
+        if (const auto dot = name.find_last_of('.'); dot != std::string::npos && dot != 0)
+        {
+            base = name.substr(0, dot);
+            ext = name.substr(dot);
+        }
+    }
+
+    std::string candidate = name;
+    int n = 2;
+
+    while (FileSystem::exists(dir + candidate))
+    {
+        candidate = base;
+        candidate += " (";
+        candidate += std::to_string(n++);
+        candidate += ")";
+        candidate += ext;
+    }
+    return candidate;
+}
 
 void UIRoot::setFocus(Widget* w, const bool show)
 {
