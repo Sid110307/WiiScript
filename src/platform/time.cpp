@@ -16,5 +16,5 @@ double Time::seconds()
     const uint64_t dt = gettime() - startTicks;
     const auto ms = static_cast<double>(ticks_to_millisecs(dt));
 
-    return ms / 1000.0;
+    return ms / 1000.0f;
 }

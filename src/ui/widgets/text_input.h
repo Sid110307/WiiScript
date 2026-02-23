@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../../gfx/text.h"
+#include "../../editor/text.h"
+#include "../../editor/commands.h"
 
 class TextInput : public Widget
 {
@@ -25,20 +26,70 @@ public:
     {
         if (!focused) return;
 
+        const auto before = editor.cursorState();
+        auto makeDeleteCmd = [&]() -> std::unique_ptr<EditCommand>
+        {
+            auto r = editor.selectionRange();
+            if (r.start == r.end) return nullptr;
+
+            return std::make_unique<DeleteCommand>(r.start, r.end, editor.getTextInRange({r.start, r.end}), before);
+        };
+
         switch (action)
         {
         case KeyAction::Backspace:
-            editor.backspace();
-            break;
+            {
+                if (editor.cursor().hasSelection())
+                {
+                    history.execute(editor, makeDeleteCmd());
+                    break;
+                }
+
+                if (TextPos c = editor.cursor().cursor(); c.col > 0)
+                {
+                    TextPos a = c;
+
+                    a.col--;
+                    history.execute(
+                        editor, std::make_unique<DeleteCommand>(a, c, editor.getTextInRange({a, c}), before));
+                }
+                else if (c.line > 0)
+                {
+                    TextPos a = {c.line - 1, editor.buffer().lineLength(c.line - 1)};
+                    TextPos b = {c.line, 0};
+
+                    history.execute(
+                        editor, std::make_unique<DeleteCommand>(a, b, editor.getTextInRange({a, b}), before));
+                }
+
+                break;
+            }
         case KeyAction::Tab:
-            editor.insertText("    ");
-            break;
+            {
+                if (editor.cursor().hasSelection())history.execute(editor, makeDeleteCmd());
+                history.execute(
+                    editor, std::make_unique<InsertCommand>(editor.cursor().cursor(), "    ", editor.cursorState()));
+
+                break;
+            }
         case KeyAction::Enter:
-            editor.newLine();
-            break;
+            {
+                if (editor.cursor().hasSelection()) history.execute(editor, makeDeleteCmd());
+                history.execute(
+                    editor, std::make_unique<InsertCommand>(editor.cursor().cursor(), "\n", editor.cursorState()));
+
+                break;
+            }
         case KeyAction::Text:
-            if (key && key[0]) editor.insertText(key);
-            break;
+            {
+                if (!key || !key[0]) break;
+                if (editor.cursor().hasSelection()) history.execute(editor, makeDeleteCmd());
+
+                history.execute(
+                    editor, std::make_unique<InsertCommand>(editor.cursor().cursor(), std::string(key),
+                                                            editor.cursorState()));
+                break;
+            }
         default:
             break;
         }
@@ -130,6 +181,9 @@ public:
 
 private:
     TextEditor editor;
+    CommandHistory history;
+    Clipboard clipboard;
+
     double caretBlinkTimer = 0.0f;
     bool caretVisible = true, draggingSelection = false;
 
