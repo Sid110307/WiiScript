@@ -35,7 +35,7 @@ std::string TextBuffer::getText() const
 
 const std::vector<std::string>& TextBuffer::getLines() const { return lines; }
 std::vector<std::string>& TextBuffer::getLines() { return lines; }
-size_t TextBuffer::lineCount() const { return lines.empty() ? 1 : lines.size(); }
+size_t TextBuffer::lineCount() const { return lines.size(); }
 
 size_t TextBuffer::lineLength(const size_t line) const
 {

@@ -39,7 +39,6 @@ public:
 
         caretVisible = true;
         caretBlinkTimer = 0.0f;
-        bounds.h = std::max(bounds.h, getContentHeight());
     }
 
     void saveFile(const std::string& path) const
@@ -61,7 +60,6 @@ public:
 
         caretVisible = true;
         caretBlinkTimer = 0.0f;
-        bounds.h = std::max(bounds.h, getContentHeight());
     }
 
     void copyText()
@@ -85,7 +83,6 @@ public:
 
         caretVisible = true;
         caretBlinkTimer = 0.0f;
-        bounds.h = std::max(bounds.h, getContentHeight());
     }
 
     void selectAll()
@@ -176,7 +173,6 @@ public:
 
         caretVisible = true;
         caretBlinkTimer = 0.0f;
-        bounds.h = std::max(bounds.h, getContentHeight());
     }
 
     bool onEvent(const Input::InputEvent& e) override
@@ -304,30 +300,45 @@ private:
     {
         const Rect r = worldBounds().inset(10);
         const auto& lines = editor.buffer().getLines();
-        const size_t line = std::clamp(
-            static_cast<size_t>(std::floor((py - r.y + viewportScrollY) / font->textHeight())), static_cast<size_t>(0),
-            lines.size() - 1);
+        if (lines.empty()) return {0, 0};
+
+        const float lineH = font ? font->textHeight() : 16.0f;
+        if (lineH <= 0.0f) return {0, 0};
+
+        const size_t line = std::clamp(static_cast<size_t>(std::floor((py - r.y + viewportScrollY) / lineH)),
+                                       static_cast<size_t>(0), lines.size() - 1);
         const std::string& s = lines[line];
+        if (!font || s.empty() || px - r.x <= 0.0f) return {line, 0};
 
-        size_t low = 0, high = s.size();
-        std::string temp;
-        temp.reserve(s.size());
+        if (hitTestLine != line || hitTestLineCache != s || hitTestPrefixWidths.size() != s.size() + 1)
+        {
+            hitTestLine = line;
+            hitTestLineCache = s;
+            hitTestPrefixWidths.assign(s.size() + 1, 0.0f);
 
+            std::string temp;
+            temp.reserve(s.size());
+
+            hitTestPrefixWidths[0] = 0.0f;
+            for (size_t i = 0; i < s.size(); ++i)
+            {
+                temp.push_back(s[i]);
+                hitTestPrefixWidths[i + 1] = font->textWidth(temp);
+            }
+        }
+        if (px - r.x >= hitTestPrefixWidths.back()) return {line, s.size()};
+
+        size_t low = 1, high = s.size();
         while (low < high)
         {
-            const size_t mid = (low + high) / 2;
-            temp.assign(s.data(), mid);
-
-            if (font->textWidth(temp) < px - r.x) low = mid + 1;
+            if (const size_t mid = (low + high) / 2; hitTestPrefixWidths[mid] < px - r.x) low = mid + 1;
             else high = mid;
         }
 
-        if (low == 0) return {line, 0};
+        const size_t col = std::max(low - 1, static_cast<size_t>(0));
         return {
             line,
-            px - r.x - font->textWidth(s.substr(0, low - 1)) < font->textWidth(s.substr(0, low)) - (px - r.x)
-                ? low - 1
-                : low
+            std::abs(px - r.x - hitTestPrefixWidths[col]) <= std::abs(hitTestPrefixWidths[low] - (px - r.x)) ? col : low
         };
     }
 
@@ -360,8 +371,7 @@ protected:
                                              lines[i].size());
                 if (c1 > c0)
                 {
-                    const float x0 = r.x + font->textWidth(lines[i].substr(0, c0)),
-                                x1 = r.x + font->textWidth(lines[i].substr(0, c1));
+                    const float x0 = r.x + prefixWidthForLine(i, c0), x1 = r.x + prefixWidthForLine(i, c1);
                     GRRLIB_Rectangle(x0, y, x1 - x0, font->textHeight(), theme().selection, true);
                 }
             }
@@ -375,7 +385,7 @@ protected:
             c.line = std::clamp(c.line, static_cast<size_t>(0), lines.size() - 1);
             c.col = std::clamp(c.col, static_cast<size_t>(0), lines[c.line].size());
 
-            const float cx = r.x + font->textWidth(lines[c.line].substr(0, c.col)),
+            const float cx = r.x + prefixWidthForLine(c.line, c.col),
                         cy = r.y + static_cast<float>(c.line) * font->textHeight() - viewportScrollY;
             GRRLIB_Line(cx, cy, cx, cy + font->textHeight(), theme().accent);
         }
@@ -389,7 +399,35 @@ protected:
             caretBlinkTimer = 0.0f;
             caretVisible = !caretVisible;
         }
+    }
 
-        bounds.h = std::max(emptyArea, getContentHeight());
+private:
+    mutable size_t hitTestLine = static_cast<size_t>(-1), drawnLine = static_cast<size_t>(-1);
+    mutable std::string hitTestLineCache, drawnLineCache;
+    mutable std::vector<float> hitTestPrefixWidths, drawnLinePrefixWidths;
+
+    float prefixWidthForLine(const size_t lineIndex, const size_t col) const
+    {
+        if (lineIndex >= editor.buffer().getLines().size()) return 0.0f;
+        const std::string& s = editor.buffer().getLines()[lineIndex];
+        if (!font || s.empty() || col == 0 || col > s.size()) return 0.0f;
+
+        if (drawnLine != lineIndex || drawnLineCache != s || drawnLinePrefixWidths.size() != s.size() + 1)
+        {
+            drawnLine = lineIndex;
+            drawnLineCache = s;
+            drawnLinePrefixWidths.assign(s.size() + 1, 0.0f);
+
+            std::string temp;
+            temp.reserve(s.size());
+
+            drawnLinePrefixWidths[0] = 0.0f;
+            for (size_t i = 0; i < s.size(); ++i)
+            {
+                temp.push_back(s[i]);
+                drawnLinePrefixWidths[i + 1] = font->textWidth(temp);
+            }
+        }
+        return drawnLinePrefixWidths[col];
     }
 };

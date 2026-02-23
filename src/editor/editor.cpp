@@ -155,10 +155,13 @@ void TextEditor::deleteRange(const Range& range)
     textCursor.setCursor(a, true);
 }
 
-void TextEditor::insertTextAt(const TextPos pos, const std::string& text)
+void TextEditor::insertTextAt(TextPos pos, const std::string& text)
 {
     auto& lines = textBuffer.getLines();
     if (lines.empty()) lines = {""};
+
+    pos.line = std::min(pos.line, lines.size() - 1);
+    pos.col = std::min(pos.col, lines[pos.line].size());
 
     TextPos cur = pos;
     for (const char c : text)

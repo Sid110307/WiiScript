@@ -55,9 +55,7 @@ bool FileSystem::ensureDir(const std::string& path)
     while (i < p.size())
     {
         const size_t j = p.find('/', i);
-        std::string part = j == std::string::npos ? p.substr(i) : p.substr(i, j - i);
-
-        if (!part.empty())
+        if (std::string part = j == std::string::npos ? p.substr(i) : p.substr(i, j - i); !part.empty())
         {
             cur = join(cur, part);
             if (!isDir(cur) && mkdir(cur.c_str(), 0777) != 0 && errno != EEXIST) return false;

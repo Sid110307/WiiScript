@@ -100,6 +100,15 @@ void TextCursor::setState(const State& state)
 
 void TextCursor::clampCursor()
 {
+    if (!textBuffer || textBuffer->lineCount() == 0)
+    {
+        cursorPos = {0, 0};
+        selectionStart = selectionEnd = cursorPos;
+        selecting = false;
+
+        return;
+    }
+
     cursorPos.line = std::min(cursorPos.line, textBuffer->lineCount() - 1);
     cursorPos.col = std::min(cursorPos.col, textBuffer->lineLength(cursorPos.line));
 }

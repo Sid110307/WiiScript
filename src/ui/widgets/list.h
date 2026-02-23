@@ -128,16 +128,16 @@ protected:
         for (int i = first; i < last; ++i)
         {
             const float y = r.y + static_cast<float>(i) * rowH;
-
-            GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().selection : theme().btn, true);
-            GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
-
             std::string text = items[i];
+
             if (text.empty())
             {
                 GRRLIB_Line(r.x + 5, y + rowH / 2, r.x + r.w - 5, y + rowH / 2, theme().textDisabled);
                 continue;
             }
+
+            GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().selection : theme().btn, true);
+            GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
             if (const Font* f = getFont(); f)
                 if (const float textW = f->textWidth(text); textW > r.w - 20)

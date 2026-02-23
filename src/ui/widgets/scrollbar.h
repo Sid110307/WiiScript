@@ -211,7 +211,7 @@ protected:
             if (needBarX) barY->bounds.h -= barWidth;
         }
 
-        clampScroll();
+        clampScroll(view.w, view.h, contentW, contentH);
     }
 
     void onDraw() const override
@@ -279,14 +279,18 @@ protected:
                 if (e.key == Input::Key::Up)
                 {
                     scrollY -= barY->scrollAmount;
-                    clampScroll();
+                    clampScroll(bounds.w - (barX && barX->visible ? barWidth : 0.0f),
+                                bounds.h - (barY->visible ? barWidth : 0.0f), content ? content->bounds.w : 0.0f,
+                                content ? content->bounds.h : 0.0f);
 
                     return true;
                 }
                 if (e.key == Input::Key::Down)
                 {
                     scrollY += barY->scrollAmount;
-                    clampScroll();
+                    clampScroll(bounds.w - (barX && barX->visible ? barWidth : 0.0f),
+                                bounds.h - (barY->visible ? barWidth : 0.0f), content ? content->bounds.w : 0.0f,
+                                content ? content->bounds.h : 0.0f);
 
                     return true;
                 }
@@ -296,14 +300,18 @@ protected:
                 if (e.key == Input::Key::Left)
                 {
                     scrollX -= barX->scrollAmount;
-                    clampScroll();
+                    clampScroll(bounds.w - (barX->visible ? barWidth : 0.0f),
+                                bounds.h - (barY && barY->visible ? barWidth : 0.0f),
+                                content ? content->bounds.w : 0.0f, content ? content->bounds.h : 0.0f);
 
                     return true;
                 }
                 if (e.key == Input::Key::Right)
                 {
                     scrollX += barX->scrollAmount;
-                    clampScroll();
+                    clampScroll(bounds.w - (barX->visible ? barWidth : 0.0f),
+                                bounds.h - (barY && barY->visible ? barWidth : 0.0f),
+                                content ? content->bounds.w : 0.0f, content ? content->bounds.h : 0.0f);
 
                     return true;
                 }
@@ -314,7 +322,9 @@ protected:
         {
             scrollX += static_cast<float>(e.scrollX) * (barX ? barX->scrollAmount : 0.0f);
             scrollY += static_cast<float>(e.scrollY) * (barY ? barY->scrollAmount : 0.0f);
-            clampScroll();
+            clampScroll(bounds.w - (barX && barX->visible ? barWidth : 0.0f),
+                        bounds.h - (barY && barY->visible ? barWidth : 0.0f), content ? content->bounds.w : 0.0f,
+                        content ? content->bounds.h : 0.0f);
 
             return true;
         }
@@ -323,7 +333,7 @@ protected:
     }
 
 private:
-    void clampScroll()
+    void clampScroll(const float viewW, const float viewH, const float contentW, const float contentH)
     {
         if (!content)
         {
@@ -331,13 +341,7 @@ private:
             return;
         }
 
-        const float maxX = std::max(
-                        0.0f, (barX ? barX->contentSize : content->bounds.w) - std::max(
-                            0.0f, bounds.w - 2.0f * padding - (barY && barY->visible ? barWidth : 0.0f))),
-                    maxY = std::max(0.0f, (barY ? barY->contentSize : content->bounds.h) - std::max(
-                                        0.0f, bounds.h - 2.0f * padding - (barX && barX->visible ? barWidth : 0.0f)));
-
-        scrollX = std::clamp(scrollX, 0.0f, maxX);
-        scrollY = std::clamp(scrollY, 0.0f, maxY);
+        scrollX = std::clamp(scrollX, 0.0f, std::max(0.0f, contentW - viewW));
+        scrollY = std::clamp(scrollY, 0.0f, std::max(0.0f, contentH - viewH));
     }
 };

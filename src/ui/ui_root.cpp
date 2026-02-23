@@ -32,7 +32,7 @@ UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& u
     fileList->onItemSelected = [this](const std::string& item)
     {
         if (item.empty()) return;
-        const std::string path = FileSystem::workspaceRoot + "/" + item;
+        const std::string path = FileSystem::workspaceRoot + item;
         if (FileSystem::isDir(path)) return;
         if (editor) editor->loadFile(path);
     };
@@ -92,7 +92,11 @@ UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& u
     fileListScroll->barY->scrollAmount = fileList->rowH;
 
     keyboard = bottom->addChild<Keyboard>(uiFont);
-    keyboard->onKey = [this](const char* key, const KeyAction action) { if (editor) editor->onKey(key, action); };
+    keyboard->onKey = [this](const char* key, const KeyAction action)
+    {
+        if (editor && !editor->focused) setFocus(editor, false);
+        if (editor) editor->onKey(key, action);
+    };
     contextMenu = root->addChild<ContextMenu>();
 
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
