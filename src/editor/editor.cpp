@@ -37,8 +37,9 @@ void TextEditor::insertText(const std::string& text)
 
         line.insert(c.col, 1, ch);
         c.col++;
-        textCursor.setCursor(c, true);
     }
+
+    textCursor.setCursor(c, true);
 }
 
 void TextEditor::backspace()
@@ -126,7 +127,7 @@ std::string TextEditor::getTextInRange(const Range& range) const
 
 void TextEditor::deleteRange(const Range& range)
 {
-    if (!textCursor.hasSelection() || textBuffer.getLines().empty()) return;
+    if (textBuffer.getLines().empty()) return;
 
     const TextPos a = minPos(range.start, range.end), b = maxPos(range.start, range.end);
     if (a == b) return;
@@ -139,7 +140,9 @@ void TextEditor::deleteRange(const Range& range)
     }
     else
     {
-        auto &startLine = lines[a.line], &endLine = lines[b.line];
+        auto& startLine = lines[a.line];
+        const auto& endLine = lines[b.line];
+
         const std::string tail = endLine.substr(b.col);
 
         startLine.erase(a.col);
@@ -164,8 +167,10 @@ void TextEditor::insertTextAt(const TextPos pos, const std::string& text)
         if (c == '\n')
         {
             auto& line = lines[cur.line];
+            const std::string tail = line.substr(cur.col);
+
             line.erase(cur.col);
-            lines.insert(lines.begin() + static_cast<int>(cur.line) + 1, line.substr(cur.col));
+            lines.insert(lines.begin() + static_cast<int>(cur.line) + 1, tail);
 
             cur.line++;
             cur.col = 0;

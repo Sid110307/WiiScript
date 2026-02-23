@@ -22,7 +22,7 @@ public:
     virtual ~Widget() = default;
 
     float radiusX = 8.0f, radiusY = 8.0f;
-    bool visible = true, enabled = true, focusableOverride = false, focused = false, showFocus = false;
+    bool visible = true, enabled = true, focusable = false, focused = false, showFocus = false;
 
     Rect bounds = {};
     Widget* parent = nullptr;
@@ -88,7 +88,7 @@ public:
     }
 
     [[nodiscard]] Font* getFont() const { return font ? font : parent ? parent->getFont() : nullptr; }
-    [[nodiscard]] virtual bool isFocusable() const { return focusableOverride && visible && enabled; }
+    [[nodiscard]] virtual bool isFocusable() const { return focusable && visible && enabled; }
 
     void collectFocusable(std::vector<Widget*>& out)
     {

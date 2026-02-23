@@ -15,6 +15,7 @@ CWARNSCPP= \
 	-Wdouble-promotion \
 	-Wmissing-declarations \
 	-Wconversion \
+	-Wno-pedantic \
         # the next warnings might be useful sometimes,
 	# but usually they generate too much noise
 	# -Wstrict-overflow=2 \

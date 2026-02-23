@@ -1,7 +1,9 @@
 #include "./ui_root.h"
 
-UIRoot::UIRoot(Font& codeFont, Font& uiFont)
+UIRoot::UIRoot(const float screenW, const float screenH, Font& codeFont, Font& uiFont)
 {
+    this->screenW = screenW;
+    this->screenH = screenH;
     root->font = &uiFont;
 
     left = root->addChild<Panel>();
@@ -10,18 +12,88 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
 
     editorScroll = center->addChild<ScrollView>();
     editor = editorScroll->addChild<TextInput>(codeFont);
+    editor->onContextMenu = [this](const float x, const float y)
+    {
+        if (!contextMenu) return;
+        contextMenu->openAt(x, y, {
+                                {"Cut", [this] { if (editor) editor->cutText(); }},
+                                {"Copy", [this] { if (editor) editor->copyText(); }},
+                                {"Paste", [this] { if (editor) editor->pasteText(); }},
+                                {"Select All", [this] { if (editor) editor->selectAll(); }}
+                            }, this->screenW, this->screenH);
+    };
+
     editorScroll->content = editor;
     editorScroll->barY = editorScroll->addChild<ScrollBar>(BoxDir::Vertical);
     editorScroll->barY->scrollAmount = codeFont.textHeight();
 
     fileListScroll = left->addChild<ScrollView>();
     fileList = fileListScroll->addChild<List>();
+    fileList->onItemSelected = [this](const std::string& item)
+    {
+        if (item.empty()) return;
+        const std::string path = FileSystem::workspaceRoot + "/" + item;
+        if (FileSystem::isDir(path)) return;
+        if (editor) editor->loadFile(path);
+    };
+    fileList->onContextMenu = [this](const float x, const float y)
+    {
+        if (!contextMenu) return;
+        contextMenu->openAt(x, y, {
+                                {
+                                    "New File", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {
+                                    "New Folder", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {"", nullptr},
+                                {
+                                    "Rename", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {
+                                    "Copy", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {
+                                    "Paste", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {
+                                    "Delete", []
+                                    {
+                                        /* TODO */
+                                    }
+                                },
+                                {"", nullptr},
+                                {
+                                    "Properties", []
+                                    {
+                                        /* TODO */
+                                    }
+                                }
+                            }, this->screenW, this->screenH);
+    };
+
     fileListScroll->content = fileList;
     fileListScroll->barY = fileListScroll->addChild<ScrollBar>(BoxDir::Vertical);
     fileListScroll->barY->scrollAmount = fileList->rowH;
 
     keyboard = bottom->addChild<Keyboard>(uiFont);
     keyboard->onKey = [this](const char* key, const KeyAction action) { if (editor) editor->onKey(key, action); };
+    contextMenu = root->addChild<ContextMenu>();
 
     if (std::vector<FileSystem::DirEntry> entries; FileSystem::listDir(FileSystem::workspaceRoot, entries, true))
     {
@@ -29,14 +101,12 @@ UIRoot::UIRoot(Font& codeFont, Font& uiFont)
         for (const auto& e : entries) fileList->items.push_back(e.name + (e.isDir ? "/" : ""));
     }
 
-    for (int i = 1; i <= 150; ++i) fileList->items.push_back("File " + std::to_string(i));
-
     rebuildFocusList();
     if (editor && editor->isFocusable()) setFocus(editor, false);
     else if (!focusableWidgets.empty()) setFocus(focusableWidgets[0], false);
 }
 
-void UIRoot::layout(const float screenW, const float screenH) const
+void UIRoot::layout() const
 {
     root->bounds = Rect({0, 0, screenW, screenH});
     Rect content = root->bounds;
@@ -108,13 +178,20 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
         return;
     }
 
-    if (e.type == Input::InputEvent::Type::KeyDown || e.type == Input::InputEvent::Type::KeyUp)
+    if (e.type == Input::InputEvent::Type::KeyUp || e.type == Input::InputEvent::Type::KeyDown)
     {
         Input::InputEvent ke = e;
         ke.pointer = pointer;
 
         if (e.key == Input::Key::A)
         {
+            if (contextMenu && contextMenu->isOpen() && e.type == Input::InputEvent::Type::KeyDown && !(pointer.valid &&
+                contextMenu->worldBounds().contains(pointer.x, pointer.y)))
+            {
+                contextMenu->close();
+                return;
+            }
+
             if (e.type == Input::InputEvent::Type::KeyDown)
             {
                 if (!pointer.valid) return;
@@ -266,13 +343,13 @@ Widget* UIRoot::findNextFocusable(const int dirX, const int dirY) const
     const auto it = std::find(focusableWidgets.begin(), focusableWidgets.end(), focusedWidget);
     if (it == focusableWidgets.end()) return focusableWidgets[0];
 
-    int idx = it - focusableWidgets.begin(), step = 0;
+    int i = it - focusableWidgets.begin(), step = 0;
 
     if (dxDir > 0 || dyDir > 0) step = 1;
     else step = -1;
 
-    idx = (idx + step) % static_cast<int>(focusableWidgets.size());
-    if (idx < 0) idx += static_cast<int>(focusableWidgets.size());
+    i = (i + step) % static_cast<int>(focusableWidgets.size());
+    if (i < 0) i += static_cast<int>(focusableWidgets.size());
 
-    return focusableWidgets[idx];
+    return focusableWidgets[i];
 }

@@ -79,6 +79,7 @@ namespace Input
     };
 
     bool init();
+    void exit();
     void poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents);
 }
 

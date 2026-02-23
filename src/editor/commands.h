@@ -1,7 +1,9 @@
 #pragma once
 
-#include "./text.h"
+#include <vector>
 #include <memory>
+
+#include "./text.h"
 
 struct EditCommand
 {

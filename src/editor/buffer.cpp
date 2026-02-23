@@ -19,7 +19,6 @@ void TextBuffer::setText(const std::string& text)
     }
 
     lines.push_back(cur);
-    if (lines.empty()) lines = {""};
 }
 
 std::string TextBuffer::getText() const

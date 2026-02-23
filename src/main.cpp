@@ -52,7 +52,7 @@ int main()
         return EXIT_FAILURE;
     }
 
-    UIRoot ui(codeFont, uiFont);
+    UIRoot ui(640, 480, codeFont, uiFont);
     while (true)
     {
         Input::poll(&frame, events);
@@ -63,7 +63,7 @@ int main()
         if (ui.quit) break;
         GRRLIB_FillScreen(theme().bg);
 
-        ui.layout(640, 480);
+        ui.layout();
         for (const auto& e : events) ui.routeEvent(e);
         ui.update(dt);
         ui.draw();
@@ -73,5 +73,7 @@ int main()
     }
 
     GRRLIB_Exit();
+    Input::exit();
+
     return EXIT_SUCCESS;
 }

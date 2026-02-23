@@ -9,17 +9,97 @@ public:
     explicit TextInput(Font& font)
     {
         this->font = &font;
-        focusableOverride = true;
+        focusable = true;
     }
 
     bool extendSelection = false;
     float emptyArea = 20.0f, viewportScrollY = 0.0f, viewportH = 0.0f;
+    std::function<void(float x, float y)> onContextMenu;
 
-    [[nodiscard]] const TextBuffer& buffer() const { return editor.buffer(); }
+    [[nodiscard]] float getContentWidth() const
+    {
+        float maxWidth = 0.0f;
+        for (const auto& line : editor.buffer().getLines()) maxWidth = std::max(maxWidth, font->textWidth(line));
 
-    [[nodiscard]] float getSize() const
+        return maxWidth;
+    }
+
+    [[nodiscard]] float getContentHeight() const
     {
         return static_cast<float>(editor.buffer().getLines().size()) * font->textHeight() + emptyArea;
+    }
+
+    void loadFile(const std::string& path)
+    {
+        std::vector<uint8_t> data;
+        if (!FileSystem::readFile(path, data)) return;
+
+        editor.setText(std::string(data.begin(), data.end()));
+        history.clear();
+
+        caretVisible = true;
+        caretBlinkTimer = 0.0f;
+        bounds.h = std::max(bounds.h, getContentHeight());
+    }
+
+    void saveFile(const std::string& path) const
+    {
+        const std::string text = editor.buffer().getText();
+        const std::vector<uint8_t> data(text.begin(), text.end());
+
+        FileSystem::writeFile(path, data);
+    }
+
+    void cutText()
+    {
+        if (!focused) return;
+        auto r = editor.selectionRange();
+        if (r.start == r.end) return;
+
+        clipboard.text = editor.getTextInRange(r);
+        history.execute(editor, std::make_unique<DeleteCommand>(r.start, r.end, clipboard.text, editor.cursorState()));
+
+        caretVisible = true;
+        caretBlinkTimer = 0.0f;
+        bounds.h = std::max(bounds.h, getContentHeight());
+    }
+
+    void copyText()
+    {
+        if (!focused) return;
+        const auto r = editor.selectionRange();
+        if (r.start == r.end) return;
+
+        clipboard.text = editor.getTextInRange(r);
+    }
+
+    void pasteText()
+    {
+        if (!focused || clipboard.text.empty()) return;
+        if (auto r = editor.selectionRange(); r.start != r.end)
+            history.execute(
+                editor, std::make_unique<DeleteCommand>(r.start, r.end, editor.getTextInRange(r),
+                                                        editor.cursorState()));
+        history.execute(
+            editor, std::make_unique<InsertCommand>(editor.cursor().cursor(), clipboard.text, editor.cursorState()));
+
+        caretVisible = true;
+        caretBlinkTimer = 0.0f;
+        bounds.h = std::max(bounds.h, getContentHeight());
+    }
+
+    void selectAll()
+    {
+        if (!focused) return;
+        const size_t lastLine = editor.buffer().getLines().empty() ? 0 : editor.buffer().getLines().size() - 1;
+
+        editor.cursor().setCursor({0, 0}, false);
+        editor.cursor().startSelection();
+        editor.cursor().setCursor({lastLine, editor.buffer().lineLength(lastLine)}, false);
+        editor.cursor().updateSelection();
+
+        caretVisible = true;
+        caretBlinkTimer = 0.0f;
     }
 
     void onKey(const char* key, const KeyAction action)
@@ -96,18 +176,25 @@ public:
 
         caretVisible = true;
         caretBlinkTimer = 0.0f;
-        bounds.h = std::max(bounds.h, getSize());
+        bounds.h = std::max(bounds.h, getContentHeight());
     }
 
     bool onEvent(const Input::InputEvent& e) override
     {
-        if (!visible || !enabled) return false;
+        if (!visible || !enabled) return Widget::onEvent(e);
         const Rect r = worldBounds();
 
         if (e.type == Input::InputEvent::Type::Pointer)
         {
             if (draggingSelection && e.pointer.valid)
             {
+                if (e.pointer.y < r.y + 20.0f)
+                    viewportScrollY = std::clamp(viewportScrollY - font->textHeight(), 0.0f,
+                                                 std::max(0.0f, getContentHeight() - viewportH));
+                else if (e.pointer.y > r.y + r.h - 20.0f)
+                    viewportScrollY = std::clamp(viewportScrollY + font->textHeight(), 0.0f,
+                                                 std::max(0.0f, getContentHeight() - viewportH));
+
                 editor.cursor().setCursor(posFromPointer(e.pointer.x, e.pointer.y), false);
                 editor.cursor().updateSelection();
                 caretVisible = true;
@@ -115,13 +202,19 @@ public:
 
                 return true;
             }
-            return false;
+            return Widget::onEvent(e);
         }
 
         if (e.type == Input::InputEvent::Type::KeyDown)
         {
             if (e.key == Input::Key::A)
             {
+                if ((static_cast<uint8_t>(e.mods) & static_cast<uint8_t>(Input::KeyMods::ContextMenu)) != 0)
+                {
+                    if (e.pointer.valid && onContextMenu) onContextMenu(e.pointer.x, e.pointer.y);
+                    return true;
+                }
+
                 if (e.pointer.valid && r.contains(e.pointer.x, e.pointer.y))
                 {
                     editor.cursor().setCursor(posFromPointer(e.pointer.x, e.pointer.y), false);
@@ -130,34 +223,54 @@ public:
 
                     return true;
                 }
-                return false;
+                return Widget::onEvent(e);
             }
 
             if (e.key == Input::Key::B)
             {
-                if (!focused) return false;
+                if (!focused) return Widget::onEvent(e);
                 extendSelection = true;
 
                 return true;
             }
+            if (!focused) return Widget::onEvent(e);
 
-            if (!focused) return false;
-            switch (e.key)
+            if (e.key == Input::Key::Minus)
             {
-            case Input::Key::Left:
+                if (!editor.cursor().hasSelection()) return true;
+
+                copyText();
+                if (extendSelection) cutText();
+
+                return true;
+            }
+            if (e.key == Input::Key::Plus)
+            {
+                if (clipboard.text.empty()) return true;
+                pasteText();
+
+                return true;
+            }
+
+            if (e.key == Input::Key::Left)
+            {
                 editor.cursor().moveLeft(extendSelection);
                 return true;
-            case Input::Key::Right:
+            }
+            if (e.key == Input::Key::Right)
+            {
                 editor.cursor().moveRight(extendSelection);
                 return true;
-            case Input::Key::Up:
+            }
+            if (e.key == Input::Key::Up)
+            {
                 editor.cursor().moveUp(extendSelection);
                 return true;
-            case Input::Key::Down:
+            }
+            if (e.key == Input::Key::Down)
+            {
                 editor.cursor().moveDown(extendSelection);
                 return true;
-            default:
-                break;
             }
         }
 
@@ -170,13 +283,13 @@ public:
             }
             if (e.key == Input::Key::B)
             {
-                if (!focused) return false;
+                if (!focused) return Widget::onEvent(e);
                 extendSelection = false;
 
                 return true;
             }
         }
-        return false;
+        return Widget::onEvent(e);
     }
 
 private:
@@ -195,10 +308,26 @@ private:
             static_cast<size_t>(std::floor((py - r.y + viewportScrollY) / font->textHeight())), static_cast<size_t>(0),
             lines.size() - 1);
         const std::string& s = lines[line];
-        const float charW = s.empty() ? font->textWidth(" ") : font->textWidth(s) / static_cast<float>(s.size());
 
+        size_t low = 0, high = s.size();
+        std::string temp;
+        temp.reserve(s.size());
+
+        while (low < high)
+        {
+            const size_t mid = (low + high) / 2;
+            temp.assign(s.data(), mid);
+
+            if (font->textWidth(temp) < px - r.x) low = mid + 1;
+            else high = mid;
+        }
+
+        if (low == 0) return {line, 0};
         return {
-            line, px - r.x > 0.0f ? std::min(static_cast<size_t>(std::floor((px - r.x) / charW + 0.5f)), s.size()) : 0
+            line,
+            px - r.x - font->textWidth(s.substr(0, low - 1)) < font->textWidth(s.substr(0, low)) - (px - r.x)
+                ? low - 1
+                : low
         };
     }
 
@@ -247,7 +376,7 @@ protected:
             c.col = std::clamp(c.col, static_cast<size_t>(0), lines[c.line].size());
 
             const float cx = r.x + font->textWidth(lines[c.line].substr(0, c.col)),
-                        cy = r.y + static_cast<float>(c.line) * font->textHeight();
+                        cy = r.y + static_cast<float>(c.line) * font->textHeight() - viewportScrollY;
             GRRLIB_Line(cx, cy, cx, cy + font->textHeight(), theme().accent);
         }
     }
@@ -261,6 +390,6 @@ protected:
             caretVisible = !caretVisible;
         }
 
-        bounds.h = std::max(bounds.h, getSize());
+        bounds.h = std::max(emptyArea, getContentHeight());
     }
 };

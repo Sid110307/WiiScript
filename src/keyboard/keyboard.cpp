@@ -18,6 +18,12 @@ static Rect computeBounds(const std::vector<KeyboardKey>& keys)
     return Rect({minX, minY, maxX - minX, maxY - minY});
 }
 
+static const char* getLabelForKey(const KeyboardKey& k, const bool caps, const bool shift)
+{
+    const bool isAlpha = std::isalpha(static_cast<unsigned char>(k.val[0])) != 0;
+    return (isAlpha && caps ^ shift) || (!isAlpha && shift) ? k.shiftVal : k.val;
+}
+
 KeyButton::KeyButton(KeyCollection& keys, Font& font, const size_t keyIndex)
     : keys(&keys), font(&font), keyIndex(keyIndex)
 {
@@ -31,9 +37,7 @@ void KeyButton::onDraw() const
     if (!keys || !font) return;
 
     const auto& k = keys->keyAt(keyIndex);
-    const char* label = keys->shift || (keys->caps && std::isalpha(static_cast<unsigned char>(k.val[0])))
-                            ? k.shiftVal
-                            : k.val;
+    const char* label = getLabelForKey(k, keys->caps, keys->shift);
     const Rect r = worldBounds();
 
     font->drawText(label, r.x + (r.w - font->textWidth(label)) / 2, r.y + (r.h - font->textHeight()) / 2, theme().text);
@@ -54,9 +58,7 @@ Keyboard::Keyboard(Font& font) : font(&font)
         btn->onClick = [this, i]
         {
             const auto& k = keys.keyAt(i);
-            activateKey(keys.shift || (keys.caps && std::isalpha(static_cast<unsigned char>(k.val[0])))
-                            ? k.shiftVal
-                            : k.val, k.action);
+            activateKey(getLabelForKey(k, keys.caps, keys.shift), k.action);
         };
     }
 }

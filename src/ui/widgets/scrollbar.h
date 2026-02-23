@@ -10,7 +10,7 @@
 class ScrollBar : public Widget
 {
 public:
-    explicit ScrollBar(const BoxDir d) : dir(d) { focusableOverride = true; }
+    explicit ScrollBar(const BoxDir d) : dir(d) { focusable = true; }
 
     const float minThumb = 18.0f;
     BoxDir dir = BoxDir::Horizontal;
@@ -19,7 +19,7 @@ public:
 
     bool onEvent(const Input::InputEvent& e) override
     {
-        if (!visible || !enabled || !scroll) return false;
+        if (!visible || !enabled || !scroll) return Widget::onEvent(e);
         const Rect r = worldBounds();
 
         if (e.type == Input::InputEvent::Type::Pointer)
@@ -57,12 +57,12 @@ public:
                 return true;
             }
 
-            return false;
+            return Widget::onEvent(e);
         }
 
         if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
         {
-            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y)) return false;
+            if (!e.pointer.valid || !r.contains(e.pointer.x, e.pointer.y)) return Widget::onEvent(e);
             const Rect thumb = thumbRect(r);
 
             if (thumb.contains(e.pointer.x, e.pointer.y))
@@ -86,7 +86,7 @@ public:
                 dragging = false;
                 return true;
             }
-            return false;
+            return Widget::onEvent(e);
         }
 
         if (e.type == Input::InputEvent::Type::KeyDown && focused)
@@ -119,7 +119,7 @@ public:
             }
         }
 
-        return false;
+        return Widget::onEvent(e);
     }
 
 protected:
@@ -163,7 +163,7 @@ public:
     ScrollBar *barX = nullptr, *barY = nullptr;
     float scrollX = 0.0f, scrollY = 0.0f, padding = 0.0f, barWidth = 12.0f;
 
-    ScrollView() { focusableOverride = true; }
+    ScrollView() { focusable = true; }
 
 protected:
     void onUpdate(double) override
@@ -182,7 +182,7 @@ protected:
 
         float contentH = std::max(view.h, content->bounds.h);
         if (const auto* list = dynamic_cast<List*>(content)) contentH = list->contentHeight();
-        if (const auto* textInput = dynamic_cast<TextInput*>(content)) contentH = textInput->getSize();
+        if (const auto* textInput = dynamic_cast<TextInput*>(content)) contentH = textInput->getContentHeight();
 
         bool needBarX = barX && contentW > view.w, needBarY = barY && contentH > view.h;
 
@@ -270,7 +270,7 @@ protected:
 
     bool onEvent(const Input::InputEvent& e) override
     {
-        if (!visible || !enabled) return false;
+        if (!visible || !enabled) return Widget::onEvent(e);
 
         if (e.type == Input::InputEvent::Type::KeyDown && focused)
         {
@@ -319,7 +319,7 @@ protected:
             return true;
         }
 
-        return false;
+        return Widget::onEvent(e);
     }
 
 private:

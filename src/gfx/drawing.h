@@ -3,6 +3,7 @@
 #include <cmath>
 #include <array>
 #include <algorithm>
+
 #include <grrlib.h>
 
 constexpr int STEP_DEG = 10, ANGLES = 360 / STEP_DEG, VERTICES = ANGLES + 4;
@@ -114,18 +115,19 @@ inline void roundedRectangle(const float x, const float y, const float width, co
     std::array<guVector, VERTICES> v = {};
     std::array<uint32_t, VERTICES> col = {};
 
-    auto setV = [&](const int idx, const float vx, const float vy) noexcept
+    auto setV = [&](const int i, const float vx, const float vy) noexcept
     {
-        v[idx].x = vx;
-        v[idx].y = vy;
-        v[idx].z = 0.0f;
-        col[idx] = color;
+        v[i].x = vx;
+        v[i].y = vy;
+        v[i].z = 0.0f;
+        col[i] = color;
     };
 
-    auto arc = [&](const int outStart, const int startIdx, const int endIdx, const float ccx, const float ccy) noexcept
+    auto arc = [&](const int outStart, const int startIndex, const int endIndex, const float ccx,
+                   const float ccy) noexcept
     {
         int out = outStart;
-        for (int i = startIdx; i <= endIdx; ++i, ++out) setV(out, lut.c[i] * rx + ccx, lut.s[i] * ry + ccy);
+        for (int i = startIndex; i <= endIndex; ++i, ++out) setV(out, lut.c[i] * rx + ccx, lut.s[i] * ry + ccy);
     };
 
     arc(0, 0, ANGLES / 4 - 1, x + 0.5f * width + 0.5f * ww, y + 0.5f * height + 0.5f * hh);

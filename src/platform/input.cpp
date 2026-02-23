@@ -51,6 +51,8 @@ bool Input::init()
     return true;
 }
 
+void Input::exit() { WPAD_Shutdown(); }
+
 void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
 {
     outEvents.clear();

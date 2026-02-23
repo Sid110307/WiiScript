@@ -193,10 +193,5 @@ bool FileSystem::writeFile(const std::string& path, const std::vector<uint8_t>& 
     fclose(f);
     remove(p.c_str());
 
-    if (rename(temp.c_str(), p.c_str()) != 0)
-    {
-        remove(temp.c_str());
-        return false;
-    }
-    return true;
+    return rename(temp.c_str(), p.c_str()) == 0;
 }

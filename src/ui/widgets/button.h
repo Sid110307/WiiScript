@@ -10,7 +10,7 @@ class Button : public Widget
 {
 public:
     explicit Button(std::string text = "", std::function<void()> onClick = nullptr)
-        : text(std::move(text)), onClick(std::move(onClick)) { focusableOverride = true; }
+        : text(std::move(text)), onClick(std::move(onClick)) { focusable = true; }
 
     std::string text;
     std::function<void()> onClick;
@@ -21,12 +21,12 @@ public:
     {
         const Rect r = worldBounds();
         if ((!visible || !enabled) && !(e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A && pressed))
-            return false;
+            return Widget::onEvent(e);
 
         if (e.type == Input::InputEvent::Type::Pointer)
         {
             hovered = e.pointer.valid && r.contains(e.pointer.x, e.pointer.y);
-            return false;
+            return Widget::onEvent(e);
         }
 
         if (e.type == Input::InputEvent::Type::KeyDown && e.key == Input::Key::A)
@@ -38,7 +38,7 @@ public:
                 return true;
             }
 
-            return false;
+            return Widget::onEvent(e);
         }
 
         if (e.type == Input::InputEvent::Type::KeyUp && e.key == Input::Key::A)
@@ -51,7 +51,7 @@ public:
             return wasPressed;
         }
 
-        return false;
+        return Widget::onEvent(e);
     }
 
 protected:
