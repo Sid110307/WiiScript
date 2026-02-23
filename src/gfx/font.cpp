@@ -18,7 +18,7 @@ bool Font::load(const std::string& path, const int size)
 
 void Font::drawText(const std::string& text, const float x, const float y, const uint32_t color) const
 {
-    if (!font) return;
+    if (!font || text.empty() || x < -textWidth(text) || x > 640.0f || y < -textHeight() || y > 480.0f) return;
     GRRLIB_PrintfTTF(static_cast<int>(std::round(x)), static_cast<int>(std::round(y)), font.get(), text.c_str(),
                      fontSize, color);
 }

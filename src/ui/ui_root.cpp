@@ -183,7 +183,7 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
             if (e.key == Input::Key::Up || e.key == Input::Key::Down || e.key == Input::Key::Left ||
                 e.key == Input::Key::Right)
             {
-                if (focusedWidget == editor) return;
+                if (focusedWidget == editor || focusedWidget == fileList) return;
 
                 Widget* next = findNextFocusable(e.key == Input::Key::Left ? -1 : e.key == Input::Key::Right ? 1 : 0,
                                                  e.key == Input::Key::Up ? -1 : e.key == Input::Key::Down ? 1 : 0);

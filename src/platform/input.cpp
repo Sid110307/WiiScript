@@ -19,7 +19,6 @@ void Input::KeyRepeat::generate(const InputFrame& frame, const double dt, std::v
 void Input::KeyRepeat::repeatKey(const double dt, std::vector<InputEvent>& outEvents, const Key key, const bool held)
 {
     State& s = keyStates[static_cast<size_t>(key)];
-
     if (!held)
     {
         s = {};
@@ -67,8 +66,8 @@ void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
         return;
     }
 
-    const uint32_t down = WPAD_ButtonsDown(WPAD_CHAN_0), held = WPAD_ButtonsHeld(WPAD_CHAN_0), up =
-                       WPAD_ButtonsUp(WPAD_CHAN_0);
+    const uint32_t down = WPAD_ButtonsDown(WPAD_CHAN_0), held = WPAD_ButtonsHeld(WPAD_CHAN_0),
+                   up = WPAD_ButtonsUp(WPAD_CHAN_0);
     ir_t ir;
     WPAD_IR(WPAD_CHAN_0, &ir);
 
@@ -87,37 +86,49 @@ void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
         outFrame->wpadUp = up;
     }
 
-    if (down & WPAD_BUTTON_HOME) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Home});
-    if (up & WPAD_BUTTON_HOME) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Home});
+    auto mods = KeyMods::None;
+    if (held & WPAD_BUTTON_2)
+        mods = static_cast<KeyMods>(static_cast<uint8_t>(mods) | static_cast<uint8_t>(KeyMods::ContextMenu));
 
-    if (down & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Up});
-    if (up & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Up});
-    if (down & WPAD_BUTTON_DOWN) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Down});
-    if (up & WPAD_BUTTON_DOWN) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Down});
-    if (down & WPAD_BUTTON_LEFT) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Left});
-    if (up & WPAD_BUTTON_LEFT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Left});
-    if (down & WPAD_BUTTON_RIGHT) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Right});
-    if (up & WPAD_BUTTON_RIGHT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Right});
+    if (down & WPAD_BUTTON_HOME)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Home, .mods = mods});
+    if (up & WPAD_BUTTON_HOME) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Home, .mods = mods});
 
-    if (down & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::A});
-    if (up & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::A});
-    if (down & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::B});
-    if (up & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::B});
+    if (down & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Up, .mods = mods});
+    if (up & WPAD_BUTTON_UP) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Up, .mods = mods});
+    if (down & WPAD_BUTTON_DOWN)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Down, .mods = mods});
+    if (up & WPAD_BUTTON_DOWN) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Down, .mods = mods});
+    if (down & WPAD_BUTTON_LEFT)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Left, .mods = mods});
+    if (up & WPAD_BUTTON_LEFT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Left, .mods = mods});
+    if (down & WPAD_BUTTON_RIGHT)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Right, .mods = mods});
+    if (up & WPAD_BUTTON_RIGHT) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Right, .mods = mods});
 
-    if (down & WPAD_BUTTON_PLUS) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Plus});
-    if (up & WPAD_BUTTON_PLUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Plus});
-    if (down & WPAD_BUTTON_MINUS) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Minus});
-    if (up & WPAD_BUTTON_MINUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Minus});
+    if (down & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::A, .mods = mods});
+    if (up & WPAD_BUTTON_A) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::A, .mods = mods});
+    if (down & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::B, .mods = mods});
+    if (up & WPAD_BUTTON_B) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::B, .mods = mods});
 
-    if (down & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::One});
-    if (up & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::One});
-    if (down & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Two});
-    if (up & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Two});
+    if (down & WPAD_BUTTON_PLUS)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Plus, .mods = mods});
+    if (up & WPAD_BUTTON_PLUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Plus, .mods = mods});
+    if (down & WPAD_BUTTON_MINUS)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Minus, .mods = mods});
+    if (up & WPAD_BUTTON_MINUS) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Minus, .mods = mods});
 
-    if (down & WPAD_NUNCHUK_BUTTON_C) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::C});
-    if (up & WPAD_NUNCHUK_BUTTON_C) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::C});
-    if (down & WPAD_NUNCHUK_BUTTON_Z) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Z});
-    if (up & WPAD_NUNCHUK_BUTTON_Z) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Z});
+    if (down & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::One, .mods = mods});
+    if (up & WPAD_BUTTON_1) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::One, .mods = mods});
+    if (down & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Two, .mods = mods});
+    if (up & WPAD_BUTTON_2) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Two, .mods = mods});
+
+    if (down & WPAD_NUNCHUK_BUTTON_C)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::C, .mods = mods});
+    if (up & WPAD_NUNCHUK_BUTTON_C) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::C, .mods = mods});
+    if (down & WPAD_NUNCHUK_BUTTON_Z)
+        outEvents.push_back({.type = InputEvent::Type::KeyDown, .key = Key::Z, .mods = mods});
+    if (up & WPAD_NUNCHUK_BUTTON_Z) outEvents.push_back({.type = InputEvent::Type::KeyUp, .key = Key::Z, .mods = mods});
 
     expansion_t exp;
     WPAD_Expansion(WPAD_CHAN_0, &exp);
@@ -141,8 +152,8 @@ void Input::poll(InputFrame* outFrame, std::vector<InputEvent>& outEvents)
             scrollAccumX -= static_cast<float>(wholeX);
             scrollAccumY -= static_cast<float>(wholeY);
 
-            if (wholeX != 0) outEvents.push_back({.type = InputEvent::Type::Scroll, .scrollX = wholeX});
-            if (wholeY != 0) outEvents.push_back({.type = InputEvent::Type::Scroll, .scrollY = wholeY});
+            if (wholeX != 0) outEvents.push_back({.type = InputEvent::Type::Scroll, .scrollX = wholeX, .mods = mods});
+            if (wholeY != 0) outEvents.push_back({.type = InputEvent::Type::Scroll, .scrollY = wholeY, .mods = mods});
         }
     }
 }

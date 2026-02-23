@@ -137,8 +137,9 @@ private:
     {
         const Rect r = worldBounds().inset(10);
         const auto& lines = editor.buffer().getLines();
-        const size_t line = std::clamp(static_cast<size_t>(std::floor((py - r.y) / font->textHeight())),
-                                       static_cast<size_t>(0), lines.size() - 1);
+        const size_t line = std::clamp(
+            static_cast<size_t>(std::floor((py - r.y + viewportScrollY) / font->textHeight())), static_cast<size_t>(0),
+            lines.size() - 1);
         const std::string& s = lines[line];
         const float charW = s.empty() ? font->textWidth(" ") : font->textWidth(s) / static_cast<float>(s.size());
 
@@ -167,7 +168,7 @@ protected:
                          static_cast<size_t>(0), lines.size());
         for (size_t i = startLine; i < endLine; ++i)
         {
-            const float y = r.y + static_cast<float>(i) * font->textHeight();
+            const float y = r.y + static_cast<float>(i) * font->textHeight() - viewportScrollY;
             if (editor.cursor().hasSelection() && i >= selStart.line && i <= selEnd.line)
             {
                 const size_t c0 = std::clamp(i == selStart.line ? selStart.col : 0, static_cast<size_t>(0),

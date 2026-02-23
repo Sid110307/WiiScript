@@ -28,6 +28,12 @@ namespace Input
         StickDown,
     };
 
+    enum class KeyMods : uint8_t
+    {
+        None = 0,
+        ContextMenu = 1 << 0,
+    };
+
     struct PointerState
     {
         bool valid = false;
@@ -47,7 +53,7 @@ namespace Input
         PointerState pointer = {};
         int scrollX = 0, scrollY = 0;
         Key key = Key::None;
-        uint32_t keyMods = 0, ch = 0;
+        KeyMods mods = KeyMods::None;
     };
 
     struct InputFrame
