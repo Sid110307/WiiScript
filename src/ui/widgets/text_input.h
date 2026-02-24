@@ -41,14 +41,6 @@ public:
         caretBlinkTimer = 0.0f;
     }
 
-    void saveFile(const std::string& path) const
-    {
-        const std::string text = editor.buffer().getText();
-        const std::vector<uint8_t> data(text.begin(), text.end());
-
-        FileSystem::writeFile(path, data);
-    }
-
     void cutText()
     {
         if (!focused) return;
@@ -184,6 +176,12 @@ public:
         {
             if (draggingSelection && e.pointer.valid)
             {
+                static float lastX = -1, lastY = -1;
+                if (std::abs(e.pointer.x - lastX) < 1.0f && std::abs(e.pointer.y - lastY) < 1.0f) return true;
+
+                lastX = e.pointer.x;
+                lastY = e.pointer.y;
+
                 if (e.pointer.y < r.y + 20.0f)
                     viewportScrollY = std::clamp(viewportScrollY - font->textHeight(), 0.0f,
                                                  std::max(0.0f, getContentHeight() - viewportH));
@@ -205,12 +203,6 @@ public:
         {
             if (e.key == Input::Key::A)
             {
-                if ((static_cast<uint8_t>(e.mods) & static_cast<uint8_t>(Input::KeyMods::ContextMenu)) != 0)
-                {
-                    if (e.pointer.valid && onContextMenu) onContextMenu(e.pointer.x, e.pointer.y);
-                    return true;
-                }
-
                 if (e.pointer.valid && r.contains(e.pointer.x, e.pointer.y))
                 {
                     editor.cursor().setCursor(posFromPointer(e.pointer.x, e.pointer.y), false);
@@ -251,21 +243,33 @@ public:
             if (e.key == Input::Key::Left)
             {
                 editor.cursor().moveLeft(extendSelection);
+                caretVisible = true;
+                caretBlinkTimer = 0.0f;
+
                 return true;
             }
             if (e.key == Input::Key::Right)
             {
                 editor.cursor().moveRight(extendSelection);
+                caretVisible = true;
+                caretBlinkTimer = 0.0f;
+
                 return true;
             }
             if (e.key == Input::Key::Up)
             {
                 editor.cursor().moveUp(extendSelection);
+                caretVisible = true;
+                caretBlinkTimer = 0.0f;
+
                 return true;
             }
             if (e.key == Input::Key::Down)
             {
                 editor.cursor().moveDown(extendSelection);
+                caretVisible = true;
+                caretBlinkTimer = 0.0f;
+
                 return true;
             }
         }
@@ -355,11 +359,14 @@ protected:
             selEnd = editor.cursor().selectionEndPos();
         }
 
-        const size_t startLine = std::clamp(static_cast<size_t>(std::floor(viewportScrollY / font->textHeight())),
-                                            static_cast<size_t>(0), lines.size()),
-                     endLine = std::clamp(
-                         static_cast<size_t>(std::ceil((viewportScrollY + viewportH) / font->textHeight())) + 1,
-                         static_cast<size_t>(0), lines.size());
+        const size_t lineCount = lines.size();
+        if (lineCount == 0) return;
+        const float lineH = font->textHeight();
+
+        const size_t startLine = std::clamp(static_cast<size_t>(std::floor(viewportScrollY / lineH)),
+                                            static_cast<size_t>(0), lineCount - 1),
+                     endLine = std::clamp(static_cast<size_t>(std::ceil((viewportScrollY + viewportH) / lineH)) + 1,
+                                          static_cast<size_t>(0), lineCount);
         for (size_t i = startLine; i < endLine; ++i)
         {
             const float y = r.y + static_cast<float>(i) * font->textHeight() - viewportScrollY;
@@ -402,32 +409,18 @@ protected:
     }
 
 private:
-    mutable size_t hitTestLine = static_cast<size_t>(-1), drawnLine = static_cast<size_t>(-1);
-    mutable std::string hitTestLineCache, drawnLineCache;
-    mutable std::vector<float> hitTestPrefixWidths, drawnLinePrefixWidths;
+    mutable size_t hitTestLine = static_cast<size_t>(-1);
+    mutable std::string hitTestLineCache;
+    mutable std::vector<float> hitTestPrefixWidths;
 
-    float prefixWidthForLine(const size_t lineIndex, const size_t col) const
+    float prefixWidthForLine(const size_t lineIndex, size_t col) const
     {
-        if (lineIndex >= editor.buffer().getLines().size()) return 0.0f;
-        const std::string& s = editor.buffer().getLines()[lineIndex];
-        if (!font || s.empty() || col == 0 || col > s.size()) return 0.0f;
+        const auto& lines = editor.buffer().getLines();
+        if (!font || lineIndex >= lines.size()) return 0.0f;
 
-        if (drawnLine != lineIndex || drawnLineCache != s || drawnLinePrefixWidths.size() != s.size() + 1)
-        {
-            drawnLine = lineIndex;
-            drawnLineCache = s;
-            drawnLinePrefixWidths.assign(s.size() + 1, 0.0f);
+        const auto& s = lines[lineIndex];
+        col = std::clamp(col, static_cast<size_t>(0), s.size());
 
-            std::string temp;
-            temp.reserve(s.size());
-
-            drawnLinePrefixWidths[0] = 0.0f;
-            for (size_t i = 0; i < s.size(); ++i)
-            {
-                temp.push_back(s[i]);
-                drawnLinePrefixWidths[i + 1] = font->textWidth(temp);
-            }
-        }
-        return drawnLinePrefixWidths[col];
+        return font->textWidth(s.substr(0, col));
     }
 };

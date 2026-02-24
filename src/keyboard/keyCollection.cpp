@@ -1,9 +1,11 @@
 #include "./keyCollection.h"
+#include <numeric>
 
 KeyCollection::KeyCollection()
 {
     keys.clear();
-    keys.reserve(keyboardLayoutKeys());
+    keys.reserve(std::accumulate(std::begin(keyboardLayout), std::end(keyboardLayout), static_cast<size_t>(0),
+                                 [](const size_t sum, const RowSpec& r) { return sum + r.count; }));
 
     for (size_t row = 0; row < keyboardLayoutRows; ++row)
     {

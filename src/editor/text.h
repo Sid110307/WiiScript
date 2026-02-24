@@ -6,16 +6,17 @@
 struct TextPos
 {
     size_t line = 0, col = 0;
-    friend bool operator==(const TextPos& a, const TextPos& b) { return a.line == b.line && a.col == b.col; }
-    friend bool operator!=(const TextPos& a, const TextPos& b) { return !(a == b); }
+
+    friend bool operator==(const TextPos&, const TextPos&) = default;
+
+    friend bool operator<(const TextPos& a, const TextPos& b)
+    {
+        return std::tie(a.line, a.col) < std::tie(b.line, b.col);
+    }
 };
 
-inline TextPos minPos(const TextPos a, const TextPos b)
-{
-    return a.line < b.line ? a : a.line > b.line ? b : a.col < b.col ? a : b;
-}
-
-inline TextPos maxPos(const TextPos a, const TextPos b) { return minPos(b, a); }
+inline TextPos minPos(const TextPos a, const TextPos b) { return std::min(a, b); }
+inline TextPos maxPos(const TextPos a, const TextPos b) { return std::max(a, b); }
 
 struct Clipboard
 {

@@ -96,11 +96,3 @@ inline constexpr RowSpec keyboardLayout[] = {
 
 inline constexpr size_t keyboardLayoutRows = sizeof(keyboardLayout) / sizeof(RowSpec);
 inline constexpr float unitWidth = 24.0f, unitHeight = 21.0f, unitGap = 3.0f, startX = 0.0f, startY = 0.0f;
-
-inline size_t keyboardLayoutKeys()
-{
-    size_t count = 0;
-    for (const auto i : keyboardLayout) count += i.count;
-
-    return count;
-}

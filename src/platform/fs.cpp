@@ -16,7 +16,7 @@ static bool isInsideWorkspace(const std::string& path)
         p.compare(p.size() - 3, 3, "/..") != 0) && p.rfind(FileSystem::workspaceRoot, 0) == 0;
 }
 
-static std::string stripPrefix(std::string s)
+static std::string trimSlash(std::string s)
 {
     s = FileSystem::normalize(std::move(s));
     while (s.size() > 3 && s.back() == '/') s.pop_back();
@@ -116,8 +116,24 @@ bool FileSystem::isDir(const std::string& path)
 
 std::string FileSystem::normalize(std::string path)
 {
-    for (auto& c : path) if (c == '\\') c = '/';
-    return path;
+    std::string result;
+    result.reserve(path.size());
+
+    for (size_t i = 0; i < path.size();)
+    {
+        if (path[i] == '\\') path[i] = '/';
+
+        if (path[i] == '/')
+        {
+            while (i < path.size() && path[i] == '/') ++i;
+            if (!result.empty() && result.back() != '/') result.push_back('/');
+        }
+        else if (path.compare(i, 2, "./") == 0) i += 2;
+        else result.push_back(path[i++]);
+    }
+
+    if (result.size() > 1 && result.back() == '/') result.pop_back();
+    return result;
 }
 
 std::string FileSystem::join(const std::string& a, const std::string& b)
@@ -253,14 +269,14 @@ bool FileSystem::makeDir(const std::string& path)
 bool FileSystem::renamePath(const std::string& from, const std::string& to)
 {
     const std::string src = normalize(from), dst = normalize(to);
-    return !isInsideWorkspace(src) || !isInsideWorkspace(dst) || !exists(src) || exists(dst)
-               ? false
-               : rename(src.c_str(), dst.c_str()) == 0;
+    return isInsideWorkspace(src) && isInsideWorkspace(dst) && exists(src) && !exists(dst)
+               ? rename(src.c_str(), dst.c_str()) == 0
+               : false;
 }
 
 bool FileSystem::copyPath(const std::string& from, const std::string& to)
 {
-    const std::string src = stripPrefix(from), dst = stripPrefix(to);
+    const std::string src = trimSlash(from), dst = trimSlash(to);
 
     if (!isInsideWorkspace(src) || !isInsideWorkspace(dst)) return false;
     if (!exists(src)) return false;
@@ -271,7 +287,7 @@ bool FileSystem::copyPath(const std::string& from, const std::string& to)
 
 bool FileSystem::removePath(const std::string& path)
 {
-    const std::string p = stripPrefix(path);
+    const std::string p = trimSlash(path);
     if (!isInsideWorkspace(p) || !exists(p)) return false;
 
     return isDir(p) ? deleteDirRecursive(p) : remove(p.c_str()) == 0;

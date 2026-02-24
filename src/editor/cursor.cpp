@@ -1,4 +1,5 @@
 #include "./text.h"
+#include <algorithm>
 
 TextCursor::TextCursor(const TextBuffer& buffer) { textBuffer = &buffer; }
 TextPos TextCursor::cursor() const { return cursorPos; }

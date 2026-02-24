@@ -164,116 +164,22 @@ public:
     float scrollX = 0.0f, scrollY = 0.0f, padding = 0.0f, barWidth = 12.0f;
 
     ScrollView() { focusable = true; }
-
-protected:
-    void onUpdate(double) override
-    {
-        Rect view = Rect({0, 0, bounds.w, bounds.h}).inset(padding), barRectY = Rect::empty(), barRectX = Rect::empty();
-        const float contentW = content ? std::max(view.w, content->bounds.w) : 0.0f;
-
-        if (!content)
-        {
-            scrollX = scrollY = 0.0f;
-            if (barX) barX->visible = false;
-            if (barY) barY->visible = false;
-
-            return;
-        }
-
-        float contentH = std::max(view.h, content->bounds.h);
-        if (const auto* list = dynamic_cast<List*>(content)) contentH = list->contentHeight();
-        if (const auto* textInput = dynamic_cast<TextInput*>(content)) contentH = textInput->getContentHeight();
-
-        bool needBarX = barX && contentW > view.w, needBarY = barY && contentH > view.h;
-
-        if (needBarX) barRectX = view.takeBottom(barWidth);
-        if (needBarY) barRectY = view.takeRight(barWidth);
-        needBarX = barX && contentW > view.w;
-        needBarY = barY && contentH > view.h;
-
-        content->bounds = Rect({view.x - scrollX, view.y - scrollY, contentW, contentH});
-        if (barX)
-        {
-            barX->scroll = &scrollX;
-            barX->viewSize = view.w;
-            barX->visible = needBarX;
-            barX->contentSize = contentW;
-            barX->bounds = barRectX;
-            if (needBarY) barX->bounds.w -= barWidth;
-        }
-        if (barY)
-        {
-            barY->scroll = &scrollY;
-            barY->viewSize = view.h;
-            barY->visible = needBarY;
-            barY->contentSize = contentH;
-            barY->bounds = barRectY;
-            if (needBarX) barY->bounds.h -= barWidth;
-        }
-
-        clampScroll(view.w, view.h, contentW, contentH);
-    }
-
-    void onDraw() const override
-    {
-        if (!visible) return;
-        if (content && content->visible)
-        {
-            Rect clip = worldBounds().inset(padding);
-
-            if (barY && barY->visible) clip.w -= barWidth;
-            if (barX && barX->visible) clip.h -= barWidth;
-
-            if (auto* list = dynamic_cast<List*>(content))
-            {
-                list->viewportTopY = clip.y;
-                list->viewportH = clip.h;
-            }
-
-            if (auto* textInput = dynamic_cast<TextInput*>(content))
-            {
-                textInput->viewportScrollY = scrollY;
-                textInput->viewportH = clip.h;
-            }
-
-            GX_SetScissor(static_cast<int>(clip.x), static_cast<int>(clip.y), static_cast<int>(clip.w),
-                          static_cast<int>(clip.h));
-            content->draw();
-            GX_SetScissor(0, 0, 640, 480);
-        }
-
-        if (barX && barX->visible) barX->draw();
-        if (barY && barY->visible) barY->draw();
-    }
-
-    Widget* hitTest(const float px, const float py) override
-    {
-        if (!visible) return nullptr;
-
-        Rect clip = worldBounds().inset(padding);
-        if (barX && barX->visible)
-        {
-            clip.h -= barWidth;
-            if (Widget* hit = barX->hitTest(px, py)) return hit;
-        }
-        if (barY && barY->visible)
-        {
-            clip.w -= barWidth;
-            if (Widget* hit = barY->hitTest(px, py)) return hit;
-        }
-
-        if (content && clip.contains(px, py)) if (Widget* hit = content->hitTest(px, py)) return hit;
-        if (clip.contains(px, py)) return this;
-
-        return nullptr;
-    }
-
     bool onEvent(const Input::InputEvent& e) override
     {
         if (!visible || !enabled) return Widget::onEvent(e);
 
-        if (e.type == Input::InputEvent::Type::KeyDown && focused)
+        if (e.type == Input::InputEvent::Type::KeyDown)
         {
+            if (e.key == Input::Key::A && e.pointer.valid)
+            {
+                Rect clip = worldBounds().inset(padding);
+                if (barY && barY->visible) clip.w -= barWidth;
+                if (barX && barX->visible) clip.h -= barWidth;
+
+                if (content && clip.contains(e.pointer.x, e.pointer.y)) return content->onEvent(e);
+            }
+
+            if (!focused) return Widget::onEvent(e);
             if (barY && barY->visible)
             {
                 if (e.key == Input::Key::Up)
@@ -330,6 +236,117 @@ protected:
         }
 
         return Widget::onEvent(e);
+    }
+
+protected:
+    void onDraw() const override
+    {
+        if (!visible) return;
+        if (content && content->visible)
+        {
+            Rect clip = worldBounds().inset(padding);
+
+            if (barY && barY->visible) clip.w -= barWidth;
+            if (barX && barX->visible) clip.h -= barWidth;
+
+            if (auto* list = dynamic_cast<List*>(content))
+            {
+                list->viewportTopY = clip.y;
+                list->viewportH = clip.h;
+            }
+
+            if (auto* textInput = dynamic_cast<TextInput*>(content))
+            {
+                textInput->viewportScrollY = scrollY;
+                textInput->viewportH = clip.h;
+            }
+
+            GX_SetScissor(static_cast<int>(clip.x), static_cast<int>(clip.y), static_cast<int>(clip.w),
+                          static_cast<int>(clip.h));
+            content->draw();
+            GX_SetScissor(0, 0, 640, 480);
+        }
+
+        if (barX && barX->visible) barX->draw();
+        if (barY && barY->visible) barY->draw();
+    }
+
+    void onUpdate(double) override
+    {
+        Rect view = Rect({0, 0, bounds.w, bounds.h}).inset(padding), barRectY = Rect::empty(), barRectX = Rect::empty();
+        float contentW = content ? std::max(view.w, content->bounds.w) : 0.0f;
+
+        if (!content)
+        {
+            scrollX = scrollY = 0.0f;
+            if (barX) barX->visible = false;
+            if (barY) barY->visible = false;
+
+            return;
+        }
+
+        float contentH = std::max(view.h, content->bounds.h);
+        if (const auto* list = dynamic_cast<List*>(content)) contentH = std::max(contentH, list->contentHeight());
+        if (const auto* textInput = dynamic_cast<TextInput*>(content))
+        {
+            contentW = std::max(contentW, textInput->getContentWidth() + padding * 2.0f);
+            contentH = std::max(contentH, textInput->getContentHeight() + padding * 2.0f);
+        }
+
+        bool needBarX = barX && contentW > view.w, needBarY = barY && contentH > view.h;
+
+        if (needBarX) barRectX = view.takeBottom(barWidth);
+        if (needBarY) barRectY = view.takeRight(barWidth);
+        needBarX = barX && contentW > view.w;
+        needBarY = barY && contentH > view.h;
+
+        content->bounds = Rect({view.x - scrollX, view.y - scrollY, contentW, contentH});
+        if (barX)
+        {
+            barX->scroll = &scrollX;
+            barX->viewSize = view.w;
+            barX->visible = needBarX;
+            barX->contentSize = contentW;
+            barX->bounds = barRectX;
+            if (needBarY) barX->bounds.w -= barWidth;
+        }
+        if (barY)
+        {
+            barY->scroll = &scrollY;
+            barY->viewSize = view.h;
+            barY->visible = needBarY;
+            barY->contentSize = contentH;
+            barY->bounds = barRectY;
+            if (needBarX) barY->bounds.h -= barWidth;
+        }
+
+        clampScroll(view.w, view.h, contentW, contentH);
+    }
+
+    Widget* hitTest(const float px, const float py) override
+    {
+        if (!visible) return nullptr;
+
+        Rect clip = worldBounds().inset(padding);
+        if (barX && barX->visible)
+        {
+            clip.h -= barWidth;
+            if (Widget* hit = barX->hitTest(px, py)) return hit;
+        }
+        if (barY && barY->visible)
+        {
+            clip.w -= barWidth;
+            if (Widget* hit = barY->hitTest(px, py)) return hit;
+        }
+
+        if (content && clip.contains(px, py))
+        {
+            if (Widget* hit = content->hitTest(px, py)) return hit;
+            return content;
+        }
+        if (clip.contains(px, py)) return this;
+
+        return nullptr;
     }
 
 private:

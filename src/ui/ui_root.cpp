@@ -459,6 +459,30 @@ void UIRoot::routeEvent(const Input::InputEvent& e)
                 return;
             }
 
+            if (e.key == Input::Key::Two)
+            {
+                if (!pointer.valid) return;
+
+                Widget* w = root->hitTest(pointer.x, pointer.y);
+                if (!w) w = hoverWidget;
+
+                for (Widget* p = w; p; p = p->parent)
+                {
+                    if (const auto* textInput = dynamic_cast<TextInput*>(p))
+                    {
+                        if (textInput->onContextMenu) textInput->onContextMenu(pointer.x, pointer.y);
+                        return;
+                    }
+                    if (const auto* list = dynamic_cast<List*>(p))
+                    {
+                        if (list->onContextMenu) list->onContextMenu(pointer.x, pointer.y);
+                        return;
+                    }
+                }
+
+                return;
+            }
+
             if (e.key == Input::Key::Up || e.key == Input::Key::Down || e.key == Input::Key::Left ||
                 e.key == Input::Key::Right)
             {

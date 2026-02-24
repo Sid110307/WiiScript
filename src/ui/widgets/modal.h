@@ -230,12 +230,14 @@ protected:
 
             if (const Font* f = getFont())
             {
-                std::string shown = inputText;
-                while (!shown.empty() && f->textWidth(shown) > ir.w - 12.0f) shown.erase(shown.begin());
+                const std::string displayText = inputText.empty() ? " " : inputText;
+                f->drawText(displayText, ir.x + 6.0f, ir.y + (ir.h - f->textHeight()) / 2.0f, theme().text);
 
-                f->drawText(shown, ir.x + 6.0f, ir.y + (ir.h - f->textHeight()) / 2, theme().text);
-                GRRLIB_Line(ir.x + 6.0f + f->textWidth(shown), ir.y + 4.0f, ir.x + 6.0f + f->textWidth(shown),
-                            ir.y + 4.0f + ir.h - 8.0f, theme().accent);
+                if (caret <= inputText.size())
+                {
+                    const float caretX = ir.x + 6.0f + f->textWidth(inputText.substr(0, caret));
+                    GRRLIB_Line(caretX, ir.y + 4.0f, caretX, ir.y + ir.h - 4.0f, theme().accent);
+                }
             }
         }
     }

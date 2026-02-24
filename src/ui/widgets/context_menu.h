@@ -14,7 +14,7 @@ public:
         std::function<void()> onClick;
     };
 
-    float padding = 6.0f, minH = 20.0f, maxH = 220.0f, minW = 100.0f, maxW = 360.0f;
+    float padding = 0.0f, minH = 20.0f, maxH = 300.0f, minW = 50.0f, maxW = 400.0f;
     bool open = false;
 
     ContextMenu()
@@ -78,8 +78,7 @@ public:
             actions.push_back(item.onClick);
         }
 
-        const float w = std::clamp(list->contentWidth() + padding * 2.0f, minW, maxW),
-                    h = std::clamp(list->contentHeight() + padding * 2.0f, minH, maxH);
+        const float w = std::clamp(list->contentWidth(), minW, maxW), h = std::clamp(list->contentHeight(), minH, maxH);
         bounds = {std::clamp(x, 0.0f, screenW - w), std::clamp(y, 0.0f, screenH - h), w, h};
 
         scroll->scrollX = scroll->scrollY = 0.0f;
@@ -87,6 +86,7 @@ public:
 
         open = true;
         visible = true;
+        focused = true;
     }
 
 protected:

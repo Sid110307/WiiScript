@@ -70,12 +70,6 @@ public:
 
         if (e.key == Input::Key::A)
         {
-            if ((static_cast<uint8_t>(e.mods) & static_cast<uint8_t>(Input::KeyMods::ContextMenu)) != 0)
-            {
-                if (e.pointer.valid && onContextMenu) onContextMenu(e.pointer.x, e.pointer.y);
-                return true;
-            }
-
             if (e.pointer.valid)
             {
                 const int i = std::clamp(static_cast<int>((e.pointer.y - r.y) / rowH), 0, n - 1);
@@ -139,21 +133,48 @@ protected:
             GRRLIB_Rectangle(r.x, y, r.w, rowH, i == selected ? theme().selection : theme().btn, true);
             GRRLIB_Line(r.x, y + rowH, r.x + r.w, y + rowH, theme().panelBorder);
 
-            if (const Font* f = getFont(); f)
-                if (const float textW = f->textWidth(text); textW > r.w - 20)
-                {
-                    while (!text.empty() && f->textWidth(text + "...") > r.w - 20) text.pop_back();
-                    text += "...";
-                }
+            if (const float maxW = r.w - 20.0f; maxW > 0.0f) text = ellipsize(text, maxW);
+            else text.clear();
 
             if (const Font* f = getFont(); f && !text.empty())
                 f->drawText(text, r.x + 10, y + (rowH - f->textHeight()) / 2, theme().text);
         }
     }
 
+private:
     [[nodiscard]] bool isSelectable(const int i) const
     {
         return i >= 0 && i < static_cast<int>(items.size()) && !items[i].empty();
+    }
+
+    [[nodiscard]] std::string ellipsize(const std::string& text, const float maxWidth) const
+    {
+        if (text.empty()) return text;
+        if (maxWidth <= 0.0f) return "";
+
+        const Font* f = getFont();
+        if (!f || f->textWidth(text) <= maxWidth) return text;
+
+        const auto ellipsis = "...";
+        if (f->textWidth(ellipsis) > maxWidth) return "";
+
+        size_t low = 0;
+        size_t high = text.size();
+
+        while (low < high)
+        {
+            const size_t mid = (low + high + 1) / 2;
+            std::string candidate = text.substr(0, mid);
+            candidate += ellipsis;
+
+            if (f->textWidth(candidate) <= maxWidth) low = mid;
+            else high = mid - 1;
+        }
+
+        std::string out = text.substr(0, low);
+        out += ellipsis;
+
+        return out;
     }
 
     void clampSelection()

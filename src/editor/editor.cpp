@@ -65,7 +65,7 @@ void TextEditor::backspace()
         const std::string prevLine = lines[c.line - 1];
 
         lines[c.line - 1] += lines[c.line];
-        lines.erase(lines.begin() + static_cast<int>(c.line));
+        lines.erase(lines.begin() + static_cast<ptrdiff_t>(c.line));
         c.line--;
         c.col = prevLine.size();
         textCursor.setCursor(c, true);
@@ -82,7 +82,7 @@ void TextEditor::newLine()
     const std::string nextLine = line.substr(c.col);
 
     line.erase(c.col);
-    lines.insert(lines.begin() + static_cast<int>(c.line) + 1, nextLine);
+    lines.insert(lines.begin() + static_cast<ptrdiff_t>(c.line) + 1, nextLine);
     c.line++;
     c.col = 0;
     textCursor.setCursor(c, true);
@@ -148,7 +148,8 @@ void TextEditor::deleteRange(const Range& range)
         startLine.erase(a.col);
         startLine += tail;
 
-        lines.erase(lines.begin() + static_cast<int>(a.line) + 1, lines.begin() + static_cast<int>(b.line) + 1);
+        lines.erase(lines.begin() + static_cast<ptrdiff_t>(a.line) + 1,
+                    lines.begin() + static_cast<ptrdiff_t>(b.line) + 1);
     }
 
     if (lines.empty()) lines = {""};
@@ -173,7 +174,7 @@ void TextEditor::insertTextAt(TextPos pos, const std::string& text)
             const std::string tail = line.substr(cur.col);
 
             line.erase(cur.col);
-            lines.insert(lines.begin() + static_cast<int>(cur.line) + 1, tail);
+            lines.insert(lines.begin() + static_cast<ptrdiff_t>(cur.line) + 1, tail);
 
             cur.line++;
             cur.col = 0;
@@ -210,8 +211,8 @@ void TextEditor::deleteAnySelection()
         endLine.erase(0, end.col);
         startLine += endLine;
 
-        lines.erase(lines.begin() + static_cast<int>(start.line) + 1,
-                    lines.begin() + static_cast<int>(end.line) + 1);
+        lines.erase(lines.begin() + static_cast<ptrdiff_t>(start.line) + 1,
+                    lines.begin() + static_cast<ptrdiff_t>(end.line) + 1);
     }
 
     textCursor.setCursor(start, true);

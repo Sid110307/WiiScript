@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include "./config.h"
+#include <vector>
 
 class KeyCollection
 {

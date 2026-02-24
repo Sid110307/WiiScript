@@ -10,9 +10,9 @@ class Font
 {
 public:
     bool load(const std::string& path, int size);
-    void drawText(const std::string& text, float x, float y, uint32_t color) const;
+    void drawText(std::string_view text, float x, float y, uint32_t color) const;
 
-    [[nodiscard]] float textWidth(const std::string& text) const;
+    [[nodiscard]] float textWidth(std::string_view text) const;
     [[nodiscard]] float textHeight() const;
 
 private:

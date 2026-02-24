@@ -1,4 +1,5 @@
 #include "./text.h"
+#include <algorithm>
 
 void TextBuffer::setText(const std::string& text)
 {
